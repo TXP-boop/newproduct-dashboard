@@ -653,25 +653,24 @@ function processPriceResults(models, db, res) {
         const revenue = parseFloat(m[4]);
         const seller = m[5] || 'Unknown';
         const note = m[6] || '';
-        const isScraped = note.includes('涨') || note.includes('跌') || part.includes(':$');
+        const isScraped = note.includes('涨') || note.includes('跌') || note.includes('[原:') || part.includes(':$');
 
-        // Reconstruct historical price from change note
-        let histPrice = isScraped ? null : price;
-        let histVolume = isScraped ? null : volume;
-        let curPrice = isScraped ? price : null;
-        let curVolume = isScraped ? volume : null;
+        let histPrice = null, histVolume = null;
+        let curPrice = null, curVolume = null;
+        let priceNote = note;
 
-        if (isScraped && note) {
-          const chgMatch = note.match(/[涨跌]\$?([\d.]+)/);
-          if (chgMatch) {
-            const chg = parseFloat(chgMatch[1]);
-            histPrice = note.includes('跌') ? price + chg : price - chg;
-            histPrice = Math.round(histPrice * 100) / 100;
+        if (isScraped) {
+          curPrice = price;
+          curVolume = volume;
+          // Extract historical from [原:$XX/月销XX]
+          const origMatch = note.match(/\[原:\$?([\d.]+)\/月销(\d+)\]/);
+          if (origMatch) {
+            histPrice = parseFloat(origMatch[1]);
+            histVolume = parseInt(origMatch[2]);
           }
-          // Keep historical volume if available from original data (stored in revenue/price)
-          if (revenue > 0 && histPrice > 0) {
-            histVolume = Math.round(revenue / histPrice);
-          }
+        } else {
+          histPrice = price;
+          histVolume = volume;
         }
 
         competitors.push({

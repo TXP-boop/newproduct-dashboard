@@ -155,10 +155,11 @@ async function main() {
       if (!sd || !sd.current_price) return p;
       changed = true;
       const oldPrice = parseFloat(m[2]);
+      const oldVolume = parseFloat(m[3]) || 0;
       const priceDiff = sd.current_price - oldPrice;
-      let note = '';
-      if (Math.abs(priceDiff) >= 5) {
-        note = priceDiff > 0 ? ' [↑涨$' + Math.abs(Math.round(priceDiff * 100) / 100) + ']' : ' [↓跌$' + Math.abs(Math.round(priceDiff * 100) / 100) + ']';
+      let note = ` [原:$${oldPrice}/月销${Math.round(oldVolume)}]`;
+      if (Math.abs(priceDiff) >= 3) {
+        note += priceDiff > 0 ? ' [↑涨$' + Math.abs(Math.round(priceDiff*100)/100) + ']' : ' [↓跌$' + Math.abs(Math.round(priceDiff*100)/100) + ']';
       }
       return `${asin}:$${sd.current_price}/${sd.monthly_sales || '?'}/${Math.round((sd.current_price)*(sd.monthly_sales||0)*100)/100}(${m[5]||''})${note}`;
     });
