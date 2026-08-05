@@ -191,7 +191,7 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
     FROM profit_estimation pe
     LEFT JOIN inventory inv ON pe.sku = inv.sku AND pe.category = inv.category
     WHERE pe.category = ?
-  `).all(category);
+  `).all(category); // Include all SKUs, even without inventory
 
   // Filter by launch month if specified
   if (months) {
@@ -208,7 +208,10 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
   let totalActualDD = 0;
 
   for (const sku of allSkus) {
-    if (!sku.fba_first_arrival) continue;
+    if (!sku.fba_first_arrival) {
+      results.push({ sku: sku.sku, product_name: sku.product_name, fram_model: sku.fram_model, brand: sku.brand, batch: sku.batch, launch_date: null, has_sales: false, max_monthly_sales: 0, max_monthly_margin: null, actual_dd: 0, estimated_dd: sku.dd_value || 0, dd_achievement: 0 });
+      continue;
+    }
 
     const npMonths = getNewProductMonths(db, sku.sku);
     if (!npMonths) continue;
@@ -544,6 +547,17 @@ app.get('/api/dashboard/sku-detail/:sku', requireAuth, (req, res) => {
     kpi: kpiData, fees: feeData, price: priceData,
     refund: { weighted_rate: totRev>0?Math.round(totRef/totRev*10000)/100:0, monthly: refMonths }
   });
+});
+
+// Debug endpoint: check a SKU's raw data
+app.get('/api/debug/sku/:sku', requireAuth, (req, res) => {
+  const db = getDb();
+  const sku = req.params.sku.toUpperCase();
+  const pe = db.prepare('SELECT * FROM profit_estimation WHERE sku=?').get(sku);
+  const inv = db.prepare('SELECT * FROM inventory WHERE sku=?').get(sku);
+  const pl = db.prepare('SELECT month,sales_volume,sales_revenue FROM profit_loss WHERE sku=? ORDER BY month').all(sku);
+  const npMonths = inv?.fba_first_arrival ? getNewProductMonths(db, sku) : null;
+  res.json({ sku, pe: !!pe, inv: inv?{arrival:inv.fba_first_arrival}:null, pl_count: pl.length, pl_months: pl.map(r=>r.month), new_product_months: npMonths?.months, sample: pl.slice(0,6) });
 });
 
 function processPriceResults(models, db, res) {
@@ -1033,9 +1047,10 @@ app.post('/api/admin/upload-path', requireAdmin, (req, res) => {
 // Reusable Excel import function (supports all 3 types including template format)
 function importExcelData(db, data, file_type, category) {
   let count = 0;
-  // Template format: skip header row (row 0), data from row 1
+  // Template format: check if first row is a header (contains known column names)
   // Legacy format: skip metadata rows
-  const isTemplate = data.length > 0 && Array.isArray(data[0]) && String(data[0][0]).includes('商品编码');
+  const h0 = data.length > 0 && Array.isArray(data[0]) ? String(data[0][0] || '') : '';
+  const isTemplate = h0.includes('商品编码') || h0.includes('业务分类') || h0.includes('序号');
   const startRow = isTemplate ? 1 : (file_type === 'profit_loss' ? 9 : file_type === 'inventory' ? 6 : 3);
 
   for (let i = startRow; i < data.length; i++) {
