@@ -1074,14 +1074,12 @@ app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) =>
       totalCount += processSheet('月度损益', 'profit_loss');
       totalCount += processSheet('进销存', 'inventory');
     } else {
-      // Legacy: single sheet with file_type selector
-      const { file_type } = req.body;
-      if (!file_type || !['profit_estimation', 'profit_loss', 'inventory'].includes(file_type)) {
-        return res.status(400).json({ error: '请选择文件类型，或使用导入模版格式' });
-      }
-      const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetNames[0]], { header: 1, defval: '' });
+      // Legacy: single sheet, try to detect type from sheet name
+      const sn = sheetNames[0];
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
+      const file_type = req.body.file_type || 'profit_loss';
       totalCount = importExcelData(db, data, file_type, category);
-      logs.push(`${file_type}: ${totalCount}行`);
+      logs.push(`${sn}: ${totalCount}行`);
     }
 
     db.prepare(`INSERT INTO upload_log (filename, file_type, category, rows_imported, uploaded_by) VALUES (?, ?, ?, ?, ?)`)

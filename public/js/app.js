@@ -659,7 +659,6 @@ async function uploadByPath() {
 async function doUpload(file) {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('file_type', document.getElementById('fileType').value);
   formData.append('category', currentCategory);
   const resp = await fetch('/api/admin/upload', { method:'POST', body:formData });
   const data = await resp.json();
