@@ -196,6 +196,12 @@
       <div id="uploadStatus"></div>
     </div>
     <div class="admin-section">
+      <h3>🗑 清空数据</h3>
+      <p style="color:#ff4d4f;font-size:13px;margin-bottom:8px">清空当前品类所有数据（利润测算、月度损益、进销存），操作不可恢复</p>
+      <button class="btn btn-sm" style="background:#ff4d4f" onclick="clearAllData()">清空数据</button>
+      <span id="clearStatus" style="margin-left:12px;font-size:13px"></span>
+    </div>
+    <div class="admin-section">
       <h3>📋 上传历史</h3>
       <div class="table-wrap"><table id="historyTable" class="data-table"><thead><tr><th>文件名</th><th>品类</th><th>类型</th><th>导入行数</th><th>上传者</th><th>时间</th></tr></thead><tbody></tbody></table></div>
     </div>

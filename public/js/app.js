@@ -626,6 +626,27 @@ async function updateUserRole(id, role) {
   loadUsers();
 }
 
+async function clearAllData() {
+  if (!confirm('⚠️ 确认清空「' + currentCategory + '」所有数据？\n\n将删除：利润测算、月度损益、进销存\n操作不可恢复！')) return;
+  const status = document.getElementById('clearStatus');
+  status.textContent = '清空中...'; status.style.color = '#666';
+  try {
+    const resp = await fetch('/api/admin/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: currentCategory })
+    });
+    const data = await resp.json();
+    status.textContent = `✅ 已清空（利润测算${data.deleted.profit_estimation}条、损益${data.deleted.profit_loss}条、进销存${data.deleted.inventory}条）`;
+    status.style.color = '#52c41a';
+    loadHistory();
+    refreshCurrentPanel();
+  } catch(e) {
+    status.textContent = '❌ 清空失败: ' + e.message;
+    status.style.color = '#ff4d4f';
+  }
+}
+
 async function createCategoryFromAdmin() {
   const name = document.getElementById('newCatInput').value.trim();
   if (!name) return alert('请输入品类名称');

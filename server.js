@@ -1181,6 +1181,16 @@ app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) =>
   }
 });
 
+// Clear all data for a category
+app.post('/api/admin/clear', requireAdmin, (req, res) => {
+  const db = getDb();
+  const category = req.body.category || req.session.currentCategory || '滤清组套';
+  const r1 = db.prepare('DELETE FROM profit_estimation WHERE category = ?').run(category);
+  const r2 = db.prepare('DELETE FROM profit_loss WHERE category = ?').run(category);
+  const r3 = db.prepare('DELETE FROM inventory WHERE category = ?').run(category);
+  res.json({ success: true, deleted: { profit_estimation: r1.changes, profit_loss: r2.changes, inventory: r3.changes } });
+});
+
 // Upload history
 app.get('/api/admin/history', requireAdmin, (req, res) => {
   const db = getDb();
