@@ -1055,7 +1055,7 @@ function importExcelData(db, data, file_type, category) {
       const month = String(row[5] || '').trim();
       if (month === '合计' || !month) continue;
       const salesVol = parseFloat(row[6]) || 0; const salesRev = parseFloat(row[7]) || 0;
-      db.prepare(`INSERT INTO profit_loss (category, sku, month, sales_volume, sales_revenue, gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio, refund_rate, warehouse_ratio, promotion_ratio, unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT OR IGNORE INTO profit_loss (category, sku, month, sales_volume, sales_revenue, gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio, refund_rate, warehouse_ratio, promotion_ratio, unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(category, sku, month, salesVol, salesRev, parseFloat(row[8])||0, parseFloat(row[9])||0, parseFloat(row[12])||0, parseFloat(row[13])||0, parseFloat(row[14])||0, parseFloat(row[15])||0, parseFloat(row[16])||0, parseFloat(row[17])||0, salesVol>0?salesRev/salesVol:0);
       count++;
     } else if (file_type === 'inventory') {
@@ -1064,7 +1064,7 @@ function importExcelData(db, data, file_type, category) {
       const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku || sku === '合计') continue;
       const serialToDate = (s) => { if(!s||s<=0||isNaN(s)) return String(s||''); const d=new Date((new Date(1899,11,30)).getTime()+s*86400000); return d.toISOString().slice(0,10); };
-      db.prepare(`INSERT INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT OR IGNORE INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
         .run(category, sku, String(row[35]||''), serialToDate(parseFloat(row[38])), parseInt(row[5])||0, parseInt(row[6])||0, parseInt(row[10])||0, parseFloat(row[15])||0, parseFloat(row[16])||0, parseFloat(row[17])||0);
       count++;
     }
