@@ -635,7 +635,9 @@ async function uploadFolder() {
 }
 
 async function uploadByPath() {
-  const filePath = document.getElementById('filePathInput').value.trim();
+  const pathInput = document.getElementById('filePathInput');
+  if (!pathInput) return;
+  const filePath = pathInput.value.trim();
   if (!filePath) return;
   const status = document.getElementById('uploadStatus');
   status.textContent = '读取中...'; status.className = '';
@@ -643,17 +645,13 @@ async function uploadByPath() {
     const resp = await fetch('/api/admin/upload-path', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filePath,
-        file_type: document.getElementById('fileType').value,
-        category: currentCategory
-      })
+      body: JSON.stringify({ filePath, category: currentCategory })
     });
     const data = await resp.json();
-    if (data.success) { status.textContent = `✅ 上传成功！导入 ${data.rows_imported} 行数据`; status.className='success'; loadHistory(); }
+    if (data.success) { status.textContent = '✅ 上传成功！导入 ' + data.rows_imported + ' 行数据'; status.className='success'; loadHistory(); }
     else { status.textContent = '❌ '+(data.error||'上传失败'); status.className='error'; }
   } catch(e) { status.textContent = '❌ 上传失败: '+e.message; status.className='error'; }
-  document.getElementById('filePathInput').value = '';
+  pathInput.value = '';
 }
 
 async function doUpload(file) {

@@ -117,6 +117,9 @@ function initDb() {
   try { db.exec('ALTER TABLE profit_loss ADD COLUMN category TEXT DEFAULT ""'); } catch(e) {}
   try { db.exec('ALTER TABLE inventory ADD COLUMN category TEXT DEFAULT ""'); } catch(e) {}
   try { db.exec('ALTER TABLE upload_log ADD COLUMN category TEXT DEFAULT ""'); } catch(e) {}
+  // Add per-SKU promotion/refund rate columns
+  try { db.exec('ALTER TABLE profit_estimation ADD COLUMN est_promotion_rate REAL DEFAULT 0.1769'); } catch(e) {}
+  try { db.exec('ALTER TABLE profit_estimation ADD COLUMN est_refund_rate REAL DEFAULT 0.0336'); } catch(e) {}
 
   // Update existing data with default category
   db.exec("UPDATE profit_estimation SET category='滤清组套' WHERE category='' OR category IS NULL");
