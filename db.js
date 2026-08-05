@@ -111,7 +111,10 @@ function initDb() {
     INSERT OR IGNORE INTO users (name, role) VALUES ('admin', 'admin');
     INSERT OR IGNORE INTO categories (name) VALUES ('滤清组套');
 
-    // Unique indexes to prevent duplicate imports
+    // Clean duplicates then add unique indexes
+    db.exec(`DELETE FROM profit_loss WHERE id NOT IN (SELECT MIN(id) FROM profit_loss GROUP BY sku, month, category)`);
+    db.exec(`DELETE FROM profit_estimation WHERE id NOT IN (SELECT MIN(id) FROM profit_estimation GROUP BY sku, category)`);
+    db.exec(`DELETE FROM inventory WHERE id NOT IN (SELECT MIN(id) FROM inventory GROUP BY sku, category)`);
     try { db.exec('CREATE UNIQUE INDEX idx_pe ON profit_estimation(sku, category)'); } catch(e) {}
     try { db.exec('CREATE UNIQUE INDEX idx_pl ON profit_loss(sku, month, category)'); } catch(e) {}
     try { db.exec('CREATE UNIQUE INDEX idx_inv ON inventory(sku, category)'); } catch(e) {}
