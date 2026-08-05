@@ -1143,9 +1143,9 @@ app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) =>
       // Preserve scraped competitor data before clearing
       const scrapedData = db.prepare('SELECT sku, competitor_detail FROM profit_estimation WHERE category = ? AND competitor_detail LIKE ?').all(category, '%[↑%');
       // Clear existing data then import fresh
-      db.prepare('DELETE FROM profit_estimation WHERE category = ?').run(category);
-      db.prepare('DELETE FROM profit_loss WHERE category = ?').run(category);
-      db.prepare('DELETE FROM inventory WHERE category = ?').run(category);
+      db.exec('DELETE FROM profit_estimation');
+      db.exec('DELETE FROM profit_loss');
+      db.exec('DELETE FROM inventory');
       // Process template sheets
       const processSheet = (sheetName, type) => {
         if (!sheetNames.includes(sheetName)) return 0;
