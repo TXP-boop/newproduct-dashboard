@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新品监控看板</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- Login Modal -->
+<div id="loginModal" class="modal">
+  <div class="modal-content login-box">
+    <h2>📊 新品监控看板</h2>
+    <p>请输入您的姓名登录</p>
+    <input type="text" id="loginName" placeholder="输入姓名..." autofocus>
+    <button onclick="doLogin()">登 录</button>
+  </div>
+</div>
+
+<!-- Category Selection -->
+<div id="categoryModal" class="modal" style="display:none">
+  <div class="modal-content login-box">
+    <h2>📂 选择品类</h2>
+    <p>请选择要查看的品类</p>
+    <div id="categoryList" class="category-list"></div>
+    <div id="newCategoryBox" style="margin-top:16px;display:none">
+      <input type="text" id="newCategoryName" placeholder="输入新品类名称...">
+      <button class="btn btn-sm" onclick="createCategory()">创建</button>
+    </div>
+    <button class="btn btn-sm btn-outline" onclick="switchToLogin()" style="margin-top:12px">← 返回登录</button>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="app" style="display:none">
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1>📊 <span id="currentCategoryName">滤清组套</span> 新品监控看板</h1>
+      <div class="category-switch" onclick="showCategorySwitch()">
+        <span>切换品类 ▾</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="userDisplay"></span>
+      <button class="btn btn-sm btn-outline" onclick="doLogout()">退出</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="panel1">📈 新品指标达成</button>
+    <button class="tab" data-tab="panel2">💰 费率比对</button>
+    <button class="tab" data-tab="panel3">🏷 价格监测</button>
+    <button class="tab" data-tab="panel4">⚠ 高退款型号清单</button>
+    <button class="tab" data-tab="datamgmt">📁 数据管理</button>
+  </nav>
+
+  <!-- Panel 1: KPI -->
+  <section id="panel1" class="panel active">
+    <div class="filter-bar">
+      <span class="filter-label">上架月份筛选：</span>
+      <div class="multi-select-dropdown" id="monthDropdown">
+        <button class="dropdown-toggle" onclick="toggleMonthDropdown()">
+          <span id="monthDropdownLabel">全部月份</span><span class="dropdown-arrow">▼</span>
+        </button>
+        <div class="dropdown-menu" id="monthDropdownMenu" style="display:none">
+          <label><input type="checkbox" value="1" onchange="updateMonthSelection()"> 1月</label>
+          <label><input type="checkbox" value="2" onchange="updateMonthSelection()"> 2月</label>
+          <label><input type="checkbox" value="3" onchange="updateMonthSelection()"> 3月</label>
+          <label><input type="checkbox" value="4" onchange="updateMonthSelection()"> 4月</label>
+          <label><input type="checkbox" value="5" onchange="updateMonthSelection()"> 5月</label>
+          <label><input type="checkbox" value="6" onchange="updateMonthSelection()"> 6月</label>
+          <label><input type="checkbox" value="7" onchange="updateMonthSelection()"> 7月</label>
+          <label><input type="checkbox" value="8" onchange="updateMonthSelection()"> 8月</label>
+          <label><input type="checkbox" value="9" onchange="updateMonthSelection()"> 9月</label>
+          <label><input type="checkbox" value="10" onchange="updateMonthSelection()">10月</label>
+          <label><input type="checkbox" value="11" onchange="updateMonthSelection()">11月</label>
+          <label><input type="checkbox" value="12" onchange="updateMonthSelection()">12月</label>
+          <div class="dropdown-actions">
+            <button class="btn btn-sm" onclick="applyMonthFilter();toggleMonthDropdown()">应用</button>
+            <button class="btn btn-sm btn-outline" onclick="clearMonthFilter();toggleMonthDropdown()">清除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-cards">
+      <div class="kpi-card"><div class="kpi-value" id="kpi-activation">--</div><div class="kpi-label">动销率</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi-dd">--</div><div class="kpi-label">DD达成率</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi-margin">--</div><div class="kpi-label">毛利率（新品期最高月）</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi-count">--</div><div class="kpi-label">上架SKU数</div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box"><h3>DD达成率 - 逐SKU</h3><canvas id="chartDD"></canvas></div>
+      <div class="chart-box"><h3>毛利率 - 逐SKU</h3><canvas id="chartMargin"></canvas></div>
+    </div>
+    <div class="table-container">
+      <h3>SKU明细</h3>
+      <div class="table-toolbar">
+        <input type="text" id="kpiSearch" placeholder="搜索SKU..." oninput="applyKpiFilters()">
+        <span style="font-size:13px;color:#666">DD达成率:</span>
+        <input type="number" id="ddMin" placeholder="最小%" style="width:70px;padding:4px 6px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px" onchange="applyKpiFilters()"> -
+        <input type="number" id="ddMax" placeholder="最大%" style="width:70px;padding:4px 6px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px" onchange="applyKpiFilters()">
+        <span style="font-size:13px;color:#666;margin-left:8px">毛利率:</span>
+        <input type="number" id="marginMin" placeholder="最小%" style="width:70px;padding:4px 6px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px" onchange="applyKpiFilters()"> -
+        <input type="number" id="marginMax" placeholder="最大%" style="width:70px;padding:4px 6px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px" onchange="applyKpiFilters()">
+        <button class="btn btn-sm" onclick="exportTable('kpiTable','新品指标达成.csv')">📥 导出CSV</button>
+      </div>
+      <div class="table-wrap"><table id="kpiTable" class="data-table"><thead><tr><th>SKU</th><th>产品名称</th><th>批次</th><th>上架日期</th><th>新品期最高月销量</th><th>最高月</th><th>实际DD</th><th>预测DD</th><th>DD达成率</th><th>最高毛利率月</th><th>毛利率</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <!-- SKU Detail Modal -->
+    <div id="skuDetailModal" class="modal" style="display:none">
+      <div class="modal-content modal-lg">
+        <span class="close" onclick="closeSkuDetail()">&times;</span>
+        <h2 id="skuDetailTitle">SKU详情</h2>
+        <div id="skuDetailContent"></div>
+      </div>
+    </div>
+    <div id="aiPanel1" class="ai-suggestions"></div>
+  </section>
+
+  <!-- Panel 2: Fees -->
+  <section id="panel2" class="panel">
+    <div class="info-banner">📌 新品利润测算时假定退款率为<b>3.36%</b>，推广占比为<b>17.69%</b>（FBA渠道）</div>
+    <div class="chart-row">
+      <div class="chart-box"><h3>费率占比比对（实际 vs 测算）</h3><canvas id="chartFeeRate"></canvas></div>
+      <div class="chart-box"><h3>费用值比对（实际 vs 测算）</h3><canvas id="chartFeeValue"></canvas></div>
+    </div>
+    <div class="table-container">
+      <h3>费率明细</h3>
+      <div class="table-toolbar"><input type="text" id="feeSearch" placeholder="搜索SKU..." oninput="filterTable('feeTable', this.value)"><button class="btn btn-sm" onclick="exportTable('feeTable','费率比对.csv')">📥 导出CSV</button></div>
+      <div class="table-wrap"><table id="feeTable" class="data-table"><thead><tr><th>SKU</th><th>产品名称</th><th>批次</th><th>测算价</th><th>实际售价</th><th>头程(测)</th><th>头程(实)</th><th>头程(实测)</th><th>尾程(测)</th><th>尾程(实)</th><th>尾程(实测)</th><th>仓储(测)</th><th>仓储(实)</th><th>仓储(实测)</th><th>推广(测)</th><th>推广(实)</th><th>推广(实测)</th><th>退款(测)</th><th>退款(实)</th><th>退款(实测)</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div id="aiPanel2" class="ai-suggestions"></div>
+  </section>
+
+  <!-- Panel 3: Price -->
+  <section id="panel3" class="panel">
+    <div class="info-banner">📌 竞对价格为立项时历史数据，实际售价按<b>6.7汇率</b>从人民币换算为美元</div>
+    <div class="chart-row">
+      <div class="chart-box"><h3>实际售价 vs 测算价 vs 红线价（SKU维度）</h3><canvas id="chartPrice"></canvas></div>
+      <div class="chart-box"><h3>价格状态分布</h3><canvas id="chartPriceStatus"></canvas></div>
+    </div>
+    <div class="table-toolbar" style="margin-bottom:8px">
+      <button class="btn btn-sm" onclick="exportPriceSkuExcel()">📥 导出SKU价格数据</button>
+    </div>
+    <div class="table-container">
+      <h3>型号价格与竞对详情</h3>
+      <div class="table-toolbar">
+        <input type="text" id="modelSearch" placeholder="搜索型号（如CA11943 - CF12936）..." onkeyup="if(event.key==='Enter')searchModel()">
+        <button class="btn btn-sm" onclick="searchModel()">🔍 搜索</button>
+        <button class="btn btn-sm btn-outline" onclick="exportPriceExcel()">📥 导出竞对数据Excel</button>
+      </div>
+      <div class="table-wrap"><table id="priceTable" class="data-table"><thead><tr><th>型号</th><th>SKU</th><th>测算价</th><th>红线价</th><th>实际售价</th><th>价格状态</th><th>竞对信息</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div id="aiPanel3" class="ai-suggestions"></div>
+  </section>
+
+  <!-- Panel 4: Refunds -->
+  <section id="panel4" class="panel">
+    <div class="alert-bar">⚠ 近3个月加权退款率超过8%的型号：<strong id="refundCount">--</strong> 个</div>
+    <div class="table-container">
+      <h3>高退款型号清单（PT/KAX同型号并列展示）</h3>
+      <div class="table-toolbar"><button class="btn btn-sm" onclick="exportRefundExcel()">📥 导出Excel</button></div>
+      <div class="table-wrap"><table id="refundTable" class="data-table"><thead><tr><th>型号</th><th>品牌</th><th>SKU</th><th>产品名称</th><th>加权退款率</th><th>近3月收入</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div id="refundDetailModal" class="modal" style="display:none"><div class="modal-content modal-lg"><span class="close" onclick="closeRefundDetail()">&times;</span><h2 id="refundDetailTitle">退款详情</h2><div id="refundDetailContent"></div></div></div>
+    <div id="aiPanel4" class="ai-suggestions"></div>
+  </section>
+
+  <!-- Data Management Tab -->
+  <section id="datamgmt" class="panel">
+    <h2>📁 数据管理</h2>
+    <div class="admin-section">
+      <h3>📤 上传文件（数据追加，不覆盖）</h3>
+      <p style="color:#666;font-size:13px;margin-bottom:8px">当前品类：<strong id="uploadCategory">滤清组套</strong></p>
+      <div class="upload-zone" id="uploadZone">
+        <p>拖拽Excel文件到此处，或点击选择</p>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+        <select id="fileType"><option value="profit_estimation">利润测算表</option><option value="profit_loss">损益分析表</option><option value="inventory">进销存报表</option></select>
+        <button class="btn" onclick="uploadFile()">上传</button>
+      </div>
+      <div id="uploadStatus"></div>
+    </div>
+    <div class="admin-section">
+      <h3>📋 上传历史</h3>
+      <div class="table-wrap"><table id="historyTable" class="data-table"><thead><tr><th>文件名</th><th>品类</th><th>类型</th><th>导入行数</th><th>上传者</th><th>时间</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="admin-section" id="userMgmtSection" style="display:none">
+      <h3>👥 用户管理</h3>
+      <div class="table-wrap"><table id="userTable" class="data-table"><thead><tr><th>姓名</th><th>角色</th><th>创建时间</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="admin-section" id="categoryMgmtSection" style="display:none">
+      <h3>📂 品类管理</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px"><input type="text" id="newCatInput" placeholder="新品类名称"><button class="btn btn-sm" onclick="createCategoryFromAdmin()">新增品类</button></div>
+      <div class="table-wrap"><table id="catTable" class="data-table"><thead><tr><th>品类名称</th><th>创建时间</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="admin-section" id="categoryAdminsSection" style="display:none">
+      <h3>👑 品类管理员</h3>
+      <p style="color:#666;font-size:13px;margin-bottom:8px">配置后可管理对应品类的数据上传和更新</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="text" id="caUserName" placeholder="用户姓名" style="width:130px">
+        <select id="caCategory"><option value="">选择品类</option></select>
+        <button class="btn btn-sm" onclick="addCategoryAdmin()">添加品类管理员</button>
+      </div>
+      <div class="table-wrap"><table id="caTable" class="data-table"><thead><tr><th>用户</th><th>品类</th><th>添加时间</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="admin-section">
+      <h3>🔗 分享看板</h3>
+      <p style="color:#666;font-size:13px;margin-bottom:8px">将看板链接分享给同事，输入姓名即可查看当前品类数据（无需上传权限）</p>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="shareUrl" readonly style="flex:1;padding:6px 12px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px" onclick="this.select()">
+        <button class="btn btn-sm" onclick="copyShareUrl()">📋 复制链接</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
