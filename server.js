@@ -903,15 +903,24 @@ app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
 app.get('/api/admin/template', requireAuth, (req, res) => {
   const fs = require('fs');
   const path = require('path');
-  // 优先使用项目内置模版
   const builtin = path.join(__dirname, 'public', 'template.xlsx');
-  const localPath = 'D:/桌面总文件/复盘&规划/新品监控模板/新品监控数据导入模版.xlsx';
-  const tmplPath = fs.existsSync(builtin) ? builtin : (fs.existsSync(localPath) ? localPath : null);
 
-  if (tmplPath) {
+  if (fs.existsSync(builtin)) {
+    // 读取模版，每个Sheet只保留首行（表头）
+    const XLSX = require('xlsx');
+    const wb = XLSX.readFile(builtin);
+    const newWb = XLSX.utils.book_new();
+    wb.SheetNames.forEach(sn => {
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
+      const headerOnly = data.length > 0 ? [data[0]] : [[]];
+      const ws = XLSX.utils.aoa_to_sheet(headerOnly);
+      ws['!cols'] = (data[0] || []).map(() => ({ wch: 16 }));
+      XLSX.utils.book_append_sheet(newWb, ws, sn);
+    });
+    const buf = XLSX.write(newWb, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', "attachment; filename*=UTF-8''%E6%96%B0%E5%93%81%E7%9B%91%E6%8E%A7%E6%95%B0%E6%8D%AE%E5%AF%BC%E5%85%A5%E6%A8%A1%E7%89%88.xlsx");
-    return res.sendFile(tmplPath);
+    return res.send(Buffer.from(buf));
   }
   res.status(404).json({ error: '模版文件未找到' });
 });
