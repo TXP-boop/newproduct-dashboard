@@ -379,7 +379,7 @@ app.get('/api/dashboard/fees', requireAuth, (req, res) => {
         first_leg: feeObj(sku.est_first_leg, maxMonth.first_leg_ratio),
         last_leg: feeObj(sku.est_last_leg, maxMonth.last_leg_ratio),
         warehouse: feeObj(sku.est_warehouse, maxMonth.warehouse_ratio),
-        promotion: feeObj(sku.est_promotion_rate || 0.1769, maxMonth.promotion_ratio),
+        promotion: feeObj(sku.est_promotion_rate || 0, maxMonth.promotion_ratio),
         refund: feeObj(sku.est_refund_rate || 0.0336, maxMonth.refund_rate)
       }
     });
@@ -489,7 +489,7 @@ app.get('/api/dashboard/sku-detail/:sku', requireAuth, (req, res) => {
 
   const inv = db.prepare('SELECT * FROM inventory WHERE sku = ? LIMIT 1').get(sku);
   const npMonths = getNewProductMonths(db, sku);
-  const EST_REF = pe.est_refund_rate || 0.0336, EST_PROMO = pe.est_promotion_rate || 0.1769;
+  const EST_REF = pe.est_refund_rate || 0.0336, EST_PROMO = pe.est_promotion_rate || 0;
 
   let feeData = null, priceData = null, kpiData = null;
   if (npMonths) {
@@ -1049,7 +1049,7 @@ function importExcelData(db, data, file_type, category) {
       const estPromo = parseFloat(row[30]); // 模版中的推广占比
       const estRefund = parseFloat(row[31]); // 模版中的退款占比
       db.prepare(`INSERT OR REPLACE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, est_promotion_rate, est_refund_rate, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(category, sku, sku, row[1]||'', row[2]||'', '', parseFloat(row[23])||null, parseFloat(row[25])||null, parseFloat(row[3])||0, parseFloat(row[26])||null, parseFloat(row[27])||null, parseFloat(row[28])||null, parseFloat(row[29])||null, parseFloat(row[35])||null, null, parseFloat(row[4])||null, parseFloat(row[5])||null, parseFloat(row[6])||null, isNaN(estPromo)?0.1769:estPromo, isNaN(estRefund)?0.0336:estRefund, String(row[18]||'').replace(/\n/g,' | '));
+        .run(category, sku, sku, row[1]||'', row[2]||'', '', parseFloat(row[23])||null, parseFloat(row[25])||null, parseFloat(row[3])||0, parseFloat(row[26])||null, parseFloat(row[27])||null, parseFloat(row[28])||null, parseFloat(row[29])||null, parseFloat(row[35])||null, null, parseFloat(row[4])||null, parseFloat(row[5])||null, parseFloat(row[6])||null, isNaN(estPromo)?0:estPromo, isNaN(estRefund)?0.0336:estRefund, String(row[18]||'').replace(/\n/g,' | '));
       count++;
     } else if (file_type === 'profit_loss') {
       // 用户模版: col2=SKU, col5=月份, col6=销量, col7=销售额, col8=毛利润, col9=毛利率

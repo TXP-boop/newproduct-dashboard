@@ -50,8 +50,8 @@ function initDb() {
       purchase_price_ex_tax REAL,
       est_first_leg_fee REAL,
       est_last_leg_fee REAL,
-      est_promotion_rate REAL DEFAULT 0.1769,
-      est_refund_rate REAL DEFAULT 0.0336,
+      est_promotion_rate REAL DEFAULT 0,
+      est_refund_rate REAL DEFAULT 0,
       competitor_detail TEXT,
       created_at TEXT DEFAULT (datetime('now','localtime'))
     );
@@ -126,8 +126,8 @@ function initDb() {
   try { db.exec('ALTER TABLE inventory ADD COLUMN category TEXT DEFAULT ""'); } catch(e) {}
   try { db.exec('ALTER TABLE upload_log ADD COLUMN category TEXT DEFAULT ""'); } catch(e) {}
   // Add per-SKU promotion/refund rate columns
-  try { db.exec('ALTER TABLE profit_estimation ADD COLUMN est_promotion_rate REAL DEFAULT 0.1769'); } catch(e) {}
-  try { db.exec('ALTER TABLE profit_estimation ADD COLUMN est_refund_rate REAL DEFAULT 0.0336'); } catch(e) {}
+  try { db.exec('ALTER TABLE profit_estimation ADD COLUMN est_promotion_rate REAL DEFAULT 0'); } catch(e) {}
+  try { db.exec('ALTER TABLE profit_estimation ADD COLUMN est_refund_rate REAL DEFAULT 0'); } catch(e) {}
 
   // Update existing data with default category
   db.exec("UPDATE profit_estimation SET category='滤清组套' WHERE category='' OR category IS NULL");
