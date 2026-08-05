@@ -1092,6 +1092,10 @@ app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) =>
     const isTemplate = sheetNames.includes('新品利润测算') || sheetNames.includes('月度损益') || sheetNames.includes('进销存');
 
     if (isTemplate) {
+      // Clear existing data then import fresh
+      db.prepare('DELETE FROM profit_estimation WHERE category = ?').run(category);
+      db.prepare('DELETE FROM profit_loss WHERE category = ?').run(category);
+      db.prepare('DELETE FROM inventory WHERE category = ?').run(category);
       // Process template sheets
       const processSheet = (sheetName, type) => {
         if (!sheetNames.includes(sheetName)) return 0;
