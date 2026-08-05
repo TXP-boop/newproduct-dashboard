@@ -186,13 +186,15 @@ function applyMonthFilter() {
   const checked = document.querySelectorAll('#monthDropdownMenu input:checked');
   currentMonthFilter = Array.from(checked).map(c => c.value).join(',');
   updateMonthSelection();
-  loadPanel1();
+  kpiSort = { field: null, asc: true };
+  refreshCurrentPanel();
 }
 function clearMonthFilter() {
   document.querySelectorAll('#monthDropdownMenu input').forEach(c => c.checked = false);
   currentMonthFilter = '';
   document.getElementById('monthDropdownLabel').textContent = '全部月份';
-  loadPanel1();
+  kpiSort = { field: null, asc: true };
+  refreshCurrentPanel();
 }
 document.addEventListener('click', (e) => {
   const dd = document.getElementById('monthDropdown');
@@ -204,6 +206,9 @@ document.addEventListener('click', (e) => {
 // ============================================================
 async function loadPanel1() {
   try {
+    // Destroy existing charts before redrawing
+    Object.values(charts).forEach(c => c.destroy());
+    charts = {};
     let extra = currentMonthFilter ? 'months=' + currentMonthFilter : '';
     const resp = await fetch(apiUrl('/api/dashboard/kpi', extra));
     const data = await resp.json();
