@@ -12,10 +12,6 @@ initDb();
 
 // Auto-import built-in template if DB is empty (Render persistence)
 const db = getDb();
-// Safety: clean any garbage-category leftovers
-db.exec("DELETE FROM profit_loss WHERE category NOT IN (SELECT name FROM categories)");
-db.exec("DELETE FROM profit_estimation WHERE category NOT IN (SELECT name FROM categories)");
-db.exec("DELETE FROM inventory WHERE category NOT IN (SELECT name FROM categories)");
 const rowCount = db.prepare('SELECT COUNT(*) as c FROM profit_estimation').get().c;
 if (rowCount === 0) {
   const fs = require('fs');
@@ -36,7 +32,7 @@ if (rowCount === 0) {
           for (let i = 1; i < data.length; i++) {
             const r = data[i]; const sku = String(r[0] || '').trim().toUpperCase();
             if (!sku) continue;
-            db.prepare(`INSERT OR REPLACE INTO profit_estimation (category,sku,product_name,fram_model,estimated_price,redline_price,dd_value,material_ratio,tax_ratio,first_leg_ratio,last_leg_ratio,warehouse_ratio,purchase_price_ex_tax,est_first_leg_fee,est_last_leg_fee,est_promotion_rate,est_refund_rate,competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+            db.prepare(`INSERT INTO profit_estimation (category,sku,product_name,fram_model,estimated_price,redline_price,dd_value,material_ratio,tax_ratio,first_leg_ratio,last_leg_ratio,warehouse_ratio,purchase_price_ex_tax,est_first_leg_fee,est_last_leg_fee,est_promotion_rate,est_refund_rate,competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
                 .run('滤清组套', sku, r[1]||'', r[2]||'', parseFloat(r[23])||null, parseFloat(r[25])||null, parseFloat(r[3])||0, parseFloat(r[26])||null, parseFloat(r[27])||null, parseFloat(r[28])||null, parseFloat(r[29])||null, parseFloat(r[35])||null, parseFloat(r[4])||null, parseFloat(r[5])||null, parseFloat(r[6])||null, parseFloat(r[30])||0, parseFloat(r[31])||0, String(r[18]||'').replace(/\n/g,' | '));
               count++;
           }
@@ -46,7 +42,7 @@ if (rowCount === 0) {
             const r = data[i]; const sku = String(r[2] || '').trim().toUpperCase(); const month = String(r[5] || '').trim();
             if (!sku || sku === '合计' || month === '合计' || !month) continue;
             const v = parseFloat(r[6]) || 0; const rev = parseFloat(r[7]) || 0;
-              db.prepare(`INSERT OR REPLACE INTO profit_loss (category,sku,month,sales_volume,sales_revenue,gross_profit,gross_margin,material_ratio,first_leg_ratio,last_leg_ratio,refund_rate,warehouse_ratio,promotion_ratio,unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+              db.prepare(`INSERT INTO profit_loss (category,sku,month,sales_volume,sales_revenue,gross_profit,gross_margin,material_ratio,first_leg_ratio,last_leg_ratio,refund_rate,warehouse_ratio,promotion_ratio,unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
                 .run('滤清组套', sku, month, v, rev, parseFloat(r[8])||0, parseFloat(r[9])||0, parseFloat(r[12])||0, parseFloat(r[13])||0, parseFloat(r[14])||0, parseFloat(r[15])||0, parseFloat(r[16])||0, parseFloat(r[17])||0, v>0?rev/v:0);
               count++;
           }
@@ -56,7 +52,7 @@ if (rowCount === 0) {
             const r = data[i]; const sku = String(r[0] || '').trim().toUpperCase();
             if (!sku || sku === '合计') continue;
             const stod = (s) => { if(!s||s<=0||isNaN(s)) return null; const d=new Date((new Date(1899,11,30)).getTime()+s*86400000); return d.toISOString().slice(0,10); };
-              db.prepare(`INSERT OR REPLACE INTO inventory (category,sku,brand,fba_first_arrival,fba_available_stock,fba_in_transit,total_stock,sales_7d,sales_14d,sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+              db.prepare(`INSERT INTO inventory (category,sku,brand,fba_first_arrival,fba_available_stock,fba_in_transit,total_stock,sales_7d,sales_14d,sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
                 .run('滤清组套', sku, String(r[35]||''), stod(parseFloat(r[38])), parseInt(r[5])||0, parseInt(r[6])||0, parseInt(r[10])||0, parseFloat(r[15])||0, parseFloat(r[16])||0, parseFloat(r[17])||0);
               count++;
           }
@@ -1110,7 +1106,7 @@ function importExcelData(db, data, file_type, category) {
       const month = String(row[5] || '').trim();
       if (month === '合计' || !month) continue;
       const salesVol = parseFloat(row[6]) || 0; const salesRev = parseFloat(row[7]) || 0;
-      db.prepare(`INSERT OR REPLACE INTO profit_loss (category, sku, month, sales_volume, sales_revenue, gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio, refund_rate, warehouse_ratio, promotion_ratio, unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT INTO profit_loss (category, sku, month, sales_volume, sales_revenue, gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio, refund_rate, warehouse_ratio, promotion_ratio, unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(category, sku, month, salesVol, salesRev, parseFloat(row[8])||0, parseFloat(row[9])||0, parseFloat(row[12])||0, parseFloat(row[13])||0, parseFloat(row[14])||0, parseFloat(row[15])||0, parseFloat(row[16])||0, parseFloat(row[17])||0, salesVol>0?salesRev/salesVol:0);
       count++;
     } else if (file_type === 'inventory') {
@@ -1119,7 +1115,7 @@ function importExcelData(db, data, file_type, category) {
       const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku || sku === '合计') continue;
       const serialToDate = (s) => { if(!s||s<=0||isNaN(s)) return String(s||''); const d=new Date((new Date(1899,11,30)).getTime()+s*86400000); return d.toISOString().slice(0,10); };
-      db.prepare(`INSERT OR REPLACE INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
         .run(category, sku, String(row[35]||''), serialToDate(parseFloat(row[38])), parseInt(row[5])||0, parseInt(row[6])||0, parseInt(row[10])||0, parseFloat(row[15])||0, parseFloat(row[16])||0, parseFloat(row[17])||0);
       count++;
     }
