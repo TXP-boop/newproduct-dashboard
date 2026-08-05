@@ -234,8 +234,8 @@ async function loadPanel1() {
       const ddPct = d.dd_achievement;
       const marginPct = d.max_monthly_margin ? Math.round(d.max_monthly_margin*10000)/100 : null;
       return `<tr data-ddpct="${ddPct}" data-margin="${marginPct!==null?marginPct:'--'}">
-      <td><a href="#" onclick="showSkuDetail('${d.sku}');return false" style="color:#1677ff;text-decoration:underline">${d.sku}</a></td>
-      <td title="${d.product_name||''}">${d.product_name||''}</td><td>${d.launch_date||''}</td>
+      <td><a href="#" onclick="showSkuDetail('${d.sku}');return false" style="color:#1677ff;text-decoration:underline" title="${d.product_name||''}">${d.sku}</a></td>
+      <td>${d.launch_date||''}</td>
       <td>${Math.round(d.max_monthly_sales)}</td><td>${d.max_month||''}</td><td>${fmt2(d.actual_dd)}</td><td>${fmt2(d.estimated_dd)}</td>
       <td class="${ddPct>=100?'good':ddPct>=60?'warn':'bad'}">${fmtPct(ddPct)}</td>
       <td>${d.max_margin_month||''}</td><td class="${(d.max_monthly_margin||0)>=0.2?'good':(d.max_monthly_margin||0)>=0?'warn':'bad'}">${marginPct!==null?fmtPct(marginPct):'--'}</td>
