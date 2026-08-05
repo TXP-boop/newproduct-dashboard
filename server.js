@@ -12,6 +12,10 @@ initDb();
 
 // Auto-import built-in template if DB is empty (Render persistence)
 const db = getDb();
+// Safety: clean any garbage-category leftovers
+db.exec(\"DELETE FROM profit_loss WHERE category NOT IN (SELECT name FROM categories)\");
+db.exec(\"DELETE FROM profit_estimation WHERE category NOT IN (SELECT name FROM categories)\");
+db.exec(\"DELETE FROM inventory WHERE category NOT IN (SELECT name FROM categories)\");
 const rowCount = db.prepare('SELECT COUNT(*) as c FROM profit_estimation').get().c;
 if (rowCount === 0) {
   const fs = require('fs');
@@ -275,7 +279,7 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
       batch: sku.batch,
       launch_date: sku.fba_first_arrival,
       has_sales: true,
-      max_monthly_sales: maxSales.sales_volume || 0,
+      max_monthly_sales: Math.round(maxSales.sales_volume || 0),
       max_month: maxSales.month,
       max_monthly_margin: maxMargin.gross_margin || 0,
       max_margin_month: maxMargin.month,
@@ -522,7 +526,7 @@ app.get('/api/dashboard/sku-detail/:sku', requireAuth, (req, res) => {
       kpiData = {
         est_dd: pe.dd_value, actual_dd: Math.round((maxS.sales_volume||0)/30*100)/100,
         dd_pct: pe.dd_value>0?Math.round((maxS.sales_volume/30/pe.dd_value)*10000)/100:0,
-        max_sales: maxS.sales_volume, max_sales_month: maxS.month,
+        max_sales: Math.round(maxS.sales_volume), max_sales_month: maxS.month,
         max_margin: maxM.gross_margin, max_margin_month: maxM.month
       };
     }
@@ -582,7 +586,7 @@ function processPriceResults(models, db, res) {
           actual_price: Math.round(actualPrice * 100) / 100,
           price_status: skuStatus,
           max_sales_month: maxMonth.month,
-          max_sales_volume: maxMonth.sales_volume
+          max_sales_volume: Math.round(maxMonth.sales_volume)
         });
       } else {
         skuDetails.push({

@@ -236,7 +236,7 @@ async function loadPanel1() {
       return `<tr data-ddpct="${ddPct}" data-margin="${marginPct!==null?marginPct:'--'}">
       <td><a href="#" onclick="showSkuDetail('${d.sku}');return false" style="color:#1677ff;text-decoration:underline">${d.sku}</a></td>
       <td title="${d.product_name||''}">${(d.product_name||'').substring(0,30)}</td><td>${d.batch||''}</td><td>${d.launch_date||''}</td>
-      <td>${d.max_monthly_sales}</td><td>${d.max_month||''}</td><td>${fmt2(d.actual_dd)}</td><td>${fmt2(d.estimated_dd)}</td>
+      <td>${Math.round(d.max_monthly_sales)}</td><td>${d.max_month||''}</td><td>${fmt2(d.actual_dd)}</td><td>${fmt2(d.estimated_dd)}</td>
       <td class="${ddPct>=100?'good':ddPct>=60?'warn':'bad'}">${fmtPct(ddPct)}</td>
       <td>${d.max_margin_month||''}</td><td class="${(d.max_monthly_margin||0)>=0.2?'good':(d.max_monthly_margin||0)>=0?'warn':'bad'}">${marginPct!==null?fmtPct(marginPct):'--'}</td>
     </tr>`;
@@ -445,7 +445,7 @@ async function showRefundDetail(model) {
         html += `<p><strong>${s.sku}</strong> - ${s.product_name||''} | 退款率: <span class="bad">${s.weighted_refund_rate}%</span> | 收入: $${s.total_revenue_3m}</p>`;
         if (s.monthly_data && s.monthly_data.length > 0) {
           html += `<table class="data-table"><thead><tr><th>月份</th><th>销量</th><th>销售额</th><th>退款率</th><th>推广占比</th></tr></thead><tbody>`
-            + s.monthly_data.map(m => `<tr><td>${m.month}</td><td>${m.sales_volume||0}</td><td>$${Math.round((m.sales_revenue||0)*100)/100}</td><td class="${(m.refund_rate||0)>0.08?'bad':''}">${Math.round((m.refund_rate||0)*10000)/100}%</td><td>${Math.round((m.promotion_ratio||0)*10000)/100}%</td></tr>`).join('')
+            + s.monthly_data.map(m => `<tr><td>${m.month}</td><td>${Math.round(m.sales_volume||0)}</td><td>$${Math.round((m.sales_revenue||0)*100)/100}</td><td class="${(m.refund_rate||0)>0.08?'bad':''}">${Math.round((m.refund_rate||0)*10000)/100}%</td><td>${Math.round((m.promotion_ratio||0)*10000)/100}%</td></tr>`).join('')
             + `</tbody></table>`;
         }
       });
@@ -713,7 +713,7 @@ async function showSkuDetail(sku) {
       <h4>⚠ 退款 (近3月加权: <b class="bad">${d.refund.weighted_rate}%</b>)</h4>`;
     if (d.refund.monthly.length > 0) {
       html += `<table class="data-table" style="font-size:12px"><thead><tr><th>月份</th><th>销量</th><th>销售额</th><th>退款率</th><th>推广占比</th></tr></thead><tbody>
-        ${d.refund.monthly.map(m => `<tr><td>${m.month}</td><td>${m.sales_volume||0}</td><td>$${Math.round((m.sales_revenue||0)*100)/100}</td><td class="${(m.refund_rate||0)>0.08?'bad':''}">${rp(m.refund_rate)}</td><td>${rp(m.promotion_ratio)}</td></tr>`).join('')}
+        ${d.refund.monthly.map(m => `<tr><td>${m.month}</td><td>${Math.round(m.sales_volume||0)}</td><td>$${Math.round((m.sales_revenue||0)*100)/100}</td><td class="${(m.refund_rate||0)>0.08?'bad':''}">${rp(m.refund_rate)}</td><td>${rp(m.promotion_ratio)}</td></tr>`).join('')}
       </tbody></table>`;
     }
     html += '</div></div>';
