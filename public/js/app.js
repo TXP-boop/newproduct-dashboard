@@ -550,7 +550,8 @@ function updateShareUrl() {
 }
 
 function downloadReport() {
-  window.open(apiUrl('/api/report'), '_blank');
+  const extra = currentMonthFilter ? 'months=' + currentMonthFilter : '';
+  window.open(apiUrl('/api/report', extra), '_blank');
 }
 
 function copyShareUrl() {
