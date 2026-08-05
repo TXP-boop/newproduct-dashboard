@@ -527,8 +527,8 @@ app.get('/api/dashboard/sku-detail/:sku', requireAuth, (req, res) => {
     }
   }
 
-  // Refund
-  const refMonths = db.prepare(`SELECT month,sales_volume,sales_revenue,refund_rate,promotion_ratio FROM profit_loss WHERE sku=? AND month>='202605' AND month<='202608' ORDER BY month DESC`).all(sku);
+  // Refund data (dedup by month)
+  const refMonths = db.prepare(`SELECT month,SUM(sales_volume) as sales_volume,SUM(sales_revenue) as sales_revenue,AVG(refund_rate) as refund_rate,AVG(promotion_ratio) as promotion_ratio FROM profit_loss WHERE sku=? AND month>='202605' AND month<='202608' GROUP BY month ORDER BY month DESC`).all(sku);
   const totRev = refMonths.reduce((s,m)=>s+(m.sales_revenue||0),0);
   const totRef = refMonths.reduce((s,m)=>s+(m.refund_rate||0)*(m.sales_revenue||0),0);
 
@@ -666,11 +666,14 @@ app.get('/api/dashboard/refunds', requireAuth, (req, res) => {
   const category = getCategory(req);
 
   const refundData = db.prepare(`
-    SELECT pl.sku, pl.month, pl.sales_volume, pl.sales_revenue, pl.refund_rate, pl.promotion_ratio,
-           pe.fram_model, pe.product_name, pe.batch
+    SELECT pl.sku, pl.month,
+           SUM(pl.sales_volume) as sales_volume, SUM(pl.sales_revenue) as sales_revenue,
+           AVG(pl.refund_rate) as refund_rate, AVG(pl.promotion_ratio) as promotion_ratio,
+           MAX(pe.fram_model) as fram_model, MAX(pe.product_name) as product_name, MAX(pe.batch) as batch
     FROM profit_loss pl
     LEFT JOIN profit_estimation pe ON pl.sku = pe.sku AND pl.category = pe.category
     WHERE pl.month >= '202605' AND pl.month <= '202608' AND pl.category = ?
+    GROUP BY pl.sku, pl.month
     ORDER BY pl.sku, pl.month DESC
   `).all(category);
 
@@ -893,7 +896,7 @@ app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
     ].filter(Boolean);
 
   } else if (panel === 'panel4') {
-    const refData = db.prepare(`SELECT pl.sku,pl.month,pl.sales_revenue,pl.refund_rate,pe.fram_model,pe.product_name FROM profit_loss pl LEFT JOIN profit_estimation pe ON pl.sku=pe.sku AND pl.category=pe.category WHERE pl.month>='202605' AND pl.month<='202608' AND pl.category=?`).all(category);
+    const refData = db.prepare(`SELECT pl.sku,pl.month,SUM(pl.sales_revenue) as sales_revenue,AVG(pl.refund_rate) as refund_rate,MAX(pe.fram_model) as fram_model,MAX(pe.product_name) as product_name FROM profit_loss pl LEFT JOIN profit_estimation pe ON pl.sku=pe.sku AND pl.category=pe.category WHERE pl.month>='202605' AND pl.month<='202608' AND pl.category=? GROUP BY pl.sku,pl.month`).all(category);
     const skuRef = {};
     refData.forEach(r => {
       if (!skuRef[r.sku]) skuRef[r.sku] = {sku:r.sku,model:r.fram_model,name:r.product_name,total:0,refund:0};
