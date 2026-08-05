@@ -443,7 +443,7 @@ async function loadPanel4() {
         brands.forEach((b, bi) => {
           const s = (b.skus||[])[i];
           if (s) {
-            html += `<td>${b.brand}</td><td>${s.sku}</td><td title="${s.product_name||''}">${(s.product_name||'').substring(0,25)}</td><td class="bad">${s.weighted_refund_rate}%</td><td>$${s.total_revenue_3m}</td>`;
+            html += `<td>${b.brand}</td><td>${s.sku}</td><td title="${s.product_name||''}">${(s.product_name||'').substring(0,25)}</td><td class="bad">${s.weighted_refund_rate}%</td><td>${Math.round(s.total_volume_3m||0)}</td>`;
             if (i === 0 && bi === 0) html += `<td rowspan="${maxRows}"><button class="btn btn-sm" onclick="showRefundDetail('${d.fram_model}')">📋 详情</button></td>`;
           } else { html += '<td></td><td></td><td></td><td></td><td></td>'; }
         });
@@ -467,7 +467,7 @@ async function showRefundDetail(model) {
     (detail.brands||[]).forEach(b => {
       html += `<h4 style="margin-top:12px">品牌: ${b.brand}</h4>`;
       (b.skus||[]).forEach(s => {
-        html += `<p><strong>${s.sku}</strong> - ${s.product_name||''} | 退款率: <span class="bad">${s.weighted_refund_rate}%</span> | 收入: $${s.total_revenue_3m}</p>`;
+        html += `<p><strong>${s.sku}</strong> - ${s.product_name||''} | 退款率: <span class="bad">${s.weighted_refund_rate}%</span> | 收入: ${Math.round(s.total_volume_3m||0)}</p>`;
         if (s.monthly_data && s.monthly_data.length > 0) {
           html += `<table class="data-table"><thead><tr><th>月份</th><th>销量</th><th>销售额</th><th>退款率</th><th>推广占比</th></tr></thead><tbody>`
             + s.monthly_data.map(m => `<tr><td>${m.month}</td><td>${Math.round(m.sales_volume||0)}</td><td>$${Math.round((m.sales_revenue||0)*100)/100}</td><td class="${(m.refund_rate||0)>0.08?'bad':''}">${Math.round((m.refund_rate||0)*10000)/100}%</td><td>${Math.round((m.promotion_ratio||0)*10000)/100}%</td></tr>`).join('')

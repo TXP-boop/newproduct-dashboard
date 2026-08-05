@@ -735,12 +735,14 @@ app.get('/api/dashboard/refunds', requireAuth, (req, res) => {
         batch: row.batch || '',
         months: [],
         total_revenue: 0,
-        total_refund_value: 0
+        total_refund_value: 0,
+        total_volume: 0
       };
     }
     skuRefundMap[row.sku].months.push(row);
     skuRefundMap[row.sku].total_revenue += (row.sales_revenue || 0);
     skuRefundMap[row.sku].total_refund_value += (row.refund_rate || 0) * (row.sales_revenue || 0);
+    skuRefundMap[row.sku].total_volume += (row.sales_volume || 0);
   }
 
   // Compute weighted refund rate per SKU
@@ -787,6 +789,7 @@ app.get('/api/dashboard/refunds', requireAuth, (req, res) => {
           product_name: s.product_name,
           weighted_refund_rate: Math.round(s.weighted_refund_rate * 10000) / 100,
           total_revenue_3m: Math.round(s.total_revenue * 100) / 100,
+          total_volume_3m: Math.round(s.total_volume),
           monthly_data: s.months
         }))
       }));
