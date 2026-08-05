@@ -142,19 +142,27 @@ function apiUrl(path, extraParams) {
 // ============================================================
 // Tabs
 // ============================================================
+let currentTab = 'panel1';
+
 function switchTab(tabName) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
   document.getElementById(tabName)?.classList.add('active');
+  currentTab = tabName;
+  refreshCurrentPanel();
+}
+
+function refreshCurrentPanel() {
   Object.values(charts).forEach(c => c.destroy());
   charts = {};
-  switch (tabName) {
+  switch (currentTab) {
     case 'panel1': loadPanel1(); break;
     case 'panel2': loadPanel2(); break;
     case 'panel3': loadPanel3(); break;
     case 'panel4': loadPanel4(); break;
     case 'datamgmt': loadDataMgmt(); break;
+    default: loadPanel1();
   }
 }
 
@@ -605,6 +613,7 @@ async function uploadFile() {
     status.textContent = `✅ 上传成功！导入 ${result.rows_imported} 行 (${result.detail || ''})`;
     status.className = 'success';
     loadHistory();
+    refreshCurrentPanel();
   } catch(e) {
     status.textContent = '❌ ' + (e.message || '上传失败');
     status.className = 'error';
