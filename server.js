@@ -900,7 +900,7 @@ app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
 // ============================================================
 // TEMPLATE DOWNLOAD — 直接使用用户的模版文件
 // ============================================================
-app.get('/api/admin/template', requireAuth, (req, res) => {
+app.get('/api/admin/template', (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const builtin = path.join(__dirname, 'public', 'template.xlsx');
