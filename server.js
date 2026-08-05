@@ -287,14 +287,13 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
 app.get('/api/dashboard/fees', requireAuth, (req, res) => {
   const db = getDb();
   const category = getCategory(req);
-  const EST_REFUND_RATE = 0.0336;
-  const EST_PROMOTION_RATE = 0.1769;
 
   const skus = db.prepare(`
     SELECT pe.sku, pe.product_name, pe.fram_model, pe.batch,
       pe.material_ratio as est_material, pe.first_leg_ratio as est_first_leg,
       pe.last_leg_ratio as est_last_leg, pe.warehouse_ratio as est_warehouse,
       pe.estimated_price as est_price, pe.redline_price, pe.dd_value as est_dd,
+      pe.est_promotion_rate, pe.est_refund_rate,
       inv.fba_first_arrival
     FROM profit_estimation pe
     LEFT JOIN inventory inv ON pe.sku = inv.sku AND pe.category = inv.category
@@ -352,8 +351,8 @@ app.get('/api/dashboard/fees', requireAuth, (req, res) => {
         first_leg: feeObj(sku.est_first_leg, maxMonth.first_leg_ratio),
         last_leg: feeObj(sku.est_last_leg, maxMonth.last_leg_ratio),
         warehouse: feeObj(sku.est_warehouse, maxMonth.warehouse_ratio),
-        promotion: feeObj(EST_PROMOTION_RATE, maxMonth.promotion_ratio),
-        refund: feeObj(EST_REFUND_RATE, maxMonth.refund_rate)
+        promotion: feeObj(sku.est_promotion_rate || 0.1769, maxMonth.promotion_ratio),
+        refund: feeObj(sku.est_refund_rate || 0.0336, maxMonth.refund_rate)
       }
     });
   }
@@ -363,8 +362,8 @@ app.get('/api/dashboard/fees', requireAuth, (req, res) => {
     first_leg: { est_total: 0, act_total: 0 },
     last_leg: { est_total: 0, act_total: 0 },
     warehouse: { est_total: 0, act_total: 0 },
-    promotion: { est_total: 0, act_total: 0, est_rate: EST_PROMOTION_RATE * 100 },
-    refund: { est_total: 0, act_total: 0, est_rate: EST_REFUND_RATE * 100 }
+    promotion: { est_total: 0, act_total: 0 },
+    refund: { est_total: 0, act_total: 0 }
   };
 
   for (const r of results) {
@@ -379,10 +378,10 @@ app.get('/api/dashboard/fees', requireAuth, (req, res) => {
     summary[key].est_rate = totalRevenue > 0 ? Math.round((summary[key].est_total / totalRevenue) * 10000) / 100 : 0;
     summary[key].act_rate = totalRevenue > 0 ? Math.round((summary[key].act_total / totalRevenue) * 10000) / 100 : 0;
   }
-  // promotion and refund use fixed estimated rates
-  summary.promotion.est_rate = Math.round(EST_PROMOTION_RATE * 10000) / 100;
+  // promotion and refund rates from template data
+  summary.promotion.est_rate = totalRevenue > 0 ? Math.round((summary.promotion.est_total / totalRevenue) * 10000) / 100 : 0;
   summary.promotion.act_rate = totalRevenue > 0 ? Math.round((summary.promotion.act_total / totalRevenue) * 10000) / 100 : 0;
-  summary.refund.est_rate = Math.round(EST_REFUND_RATE * 10000) / 100;
+  summary.refund.est_rate = totalRevenue > 0 ? Math.round((summary.refund.est_total / totalRevenue) * 10000) / 100 : 0;
   summary.refund.act_rate = totalRevenue > 0 ? Math.round((summary.refund.act_total / totalRevenue) * 10000) / 100 : 0;
 
   res.json({ summary, details: results });
@@ -462,7 +461,7 @@ app.get('/api/dashboard/sku-detail/:sku', requireAuth, (req, res) => {
 
   const inv = db.prepare('SELECT * FROM inventory WHERE sku = ? LIMIT 1').get(sku);
   const npMonths = getNewProductMonths(db, sku);
-  const EST_REF = 0.0336, EST_PROMO = 0.1769;
+  const EST_REF = pe.est_refund_rate || 0.0336, EST_PROMO = pe.est_promotion_rate || 0.1769;
 
   let feeData = null, priceData = null, kpiData = null;
   if (npMonths) {
@@ -972,8 +971,10 @@ function importExcelData(db, data, file_type, category) {
       // col30=FBA-推广占比, col31=FBA-退款占比, col35=FBA-仓储占比
       const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku) continue;
-      db.prepare(`INSERT OR IGNORE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(category, sku, sku, row[1]||'', row[2]||'', '', parseFloat(row[23])||null, parseFloat(row[25])||null, parseFloat(row[3])||0, parseFloat(row[26])||null, parseFloat(row[27])||null, parseFloat(row[28])||null, parseFloat(row[29])||null, parseFloat(row[35])||null, null, parseFloat(row[4])||null, parseFloat(row[5])||null, parseFloat(row[6])||null, String(row[18]||'').replace(/\n/g,' | '));
+      const estPromo = parseFloat(row[30]); // 模版中的推广占比
+      const estRefund = parseFloat(row[31]); // 模版中的退款占比
+      db.prepare(`INSERT OR IGNORE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, est_promotion_rate, est_refund_rate, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+        .run(category, sku, sku, row[1]||'', row[2]||'', '', parseFloat(row[23])||null, parseFloat(row[25])||null, parseFloat(row[3])||0, parseFloat(row[26])||null, parseFloat(row[27])||null, parseFloat(row[28])||null, parseFloat(row[29])||null, parseFloat(row[35])||null, null, parseFloat(row[4])||null, parseFloat(row[5])||null, parseFloat(row[6])||null, isNaN(estPromo)?0.1769:estPromo, isNaN(estRefund)?0.0336:estRefund, String(row[18]||'').replace(/\n/g,' | '));
       count++;
     } else if (file_type === 'profit_loss') {
       // 用户模版: col2=SKU, col5=月份, col6=销量, col7=销售额, col8=毛利润, col9=毛利率

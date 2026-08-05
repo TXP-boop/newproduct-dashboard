@@ -50,6 +50,8 @@ function initDb() {
       purchase_price_ex_tax REAL,
       est_first_leg_fee REAL,
       est_last_leg_fee REAL,
+      est_promotion_rate REAL DEFAULT 0.1769,
+      est_refund_rate REAL DEFAULT 0.0336,
       competitor_detail TEXT,
       created_at TEXT DEFAULT (datetime('now','localtime'))
     );
