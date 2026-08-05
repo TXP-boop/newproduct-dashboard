@@ -10,6 +10,34 @@ const PORT = process.env.PORT || 3456;
 // Initialize database
 initDb();
 
+// Auto-import built-in template if DB is empty (Render persistence)
+const db = getDb();
+const rowCount = db.prepare('SELECT COUNT(*) as c FROM profit_estimation').get().c;
+if (rowCount === 0) {
+  const fs = require('fs');
+  const path = require('path');
+  const tmplPath = path.join(__dirname, 'public', 'template.xlsx');
+  if (fs.existsSync(tmplPath)) {
+    console.log('Database empty, auto-importing from template...');
+    try {
+      const XLSX = require('xlsx');
+      const wb = XLSX.readFile(tmplPath);
+      wb.SheetNames.forEach(sn => {
+        const data = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
+        let type;
+        if (sn === '新品利润测算') type = 'profit_estimation';
+        else if (sn === '月度损益') type = 'profit_loss';
+        else if (sn === '进销存') type = 'inventory';
+        else return;
+        const count = importExcelData(db, data, type, '滤清组套');
+        console.log(`  ${sn}: ${count} rows imported`);
+      });
+    } catch(e) {
+      console.log('Auto-import skipped:', e.message);
+    }
+  }
+}
+
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
