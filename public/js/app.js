@@ -143,6 +143,8 @@ function apiUrl(path, extraParams) {
 // Tabs
 // ============================================================
 let currentTab = 'panel1';
+let kpiAllData = [];
+let kpiSort = { field: null, asc: true };
 
 function switchTab(tabName) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -230,20 +232,43 @@ async function loadPanel1() {
       options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw + '%' } } }, scales: { y: { title: { display: true, text: '毛利率 %' } } } }
     });
 
-    document.querySelector('#kpiTable tbody').innerHTML = data.details.map((d,i) => {
-      const ddPct = d.dd_achievement;
-      const marginPct = d.max_monthly_margin ? Math.round(d.max_monthly_margin*10000)/100 : null;
-      return `<tr data-ddpct="${ddPct}" data-margin="${marginPct!==null?marginPct:'--'}">
-      <td><a href="#" onclick="showSkuDetail('${d.sku}');return false" style="color:#1677ff;text-decoration:underline" title="${d.product_name||''}">${d.sku}</a></td>
-      <td>${d.launch_date||''}</td>
-      <td>${Math.round(d.max_monthly_sales)}</td><td>${d.max_month||''}</td><td>${fmt2(d.actual_dd)}</td><td>${fmt2(d.estimated_dd)}</td>
-      <td class="${ddPct>=100?'good':ddPct>=60?'warn':'bad'}">${fmtPct(ddPct)}</td>
-      <td>${d.max_margin_month||''}</td><td class="${(d.max_monthly_margin||0)>=0.2?'good':(d.max_monthly_margin||0)>=0?'warn':'bad'}">${marginPct!==null?fmtPct(marginPct):'--'}</td>
-    </tr>`;
-    }).join('');
-    applyKpiFilters();
+    kpiAllData = data.details;
+    renderKpiTable();
     loadAISuggestions('panel1');
   } catch(e) { console.error('Panel1:', e); }
+}
+
+function renderKpiTable() {
+  let data = [...kpiAllData];
+  if (kpiSort.field) {
+    data.sort((a,b) => {
+      let va, vb;
+      if (kpiSort.field === 'dd') { va = a.dd_achievement || 0; vb = b.dd_achievement || 0; }
+      else { va = (a.max_monthly_margin != null) ? a.max_monthly_margin : -999; vb = (b.max_monthly_margin != null) ? b.max_monthly_margin : -999; }
+      return kpiSort.asc ? va - vb : vb - va;
+    });
+  }
+  document.querySelector('#kpiTable tbody').innerHTML = data.map(d => {
+    const ddPct = d.dd_achievement;
+    const marginPct = d.max_monthly_margin ? Math.round(d.max_monthly_margin*10000)/100 : null;
+    return `<tr data-ddpct="${ddPct}" data-margin="${marginPct!==null?marginPct:'--'}">
+    <td><a href="#" onclick="showSkuDetail('${d.sku}');return false" style="color:#1677ff;text-decoration:underline" title="${d.product_name||''}">${d.sku}</a></td>
+    <td>${d.launch_date||''}</td>
+    <td>${Math.round(d.max_monthly_sales)}</td><td>${d.max_month||''}</td><td>${fmt2(d.actual_dd)}</td><td>${fmt2(d.estimated_dd)}</td>
+    <td class="${ddPct>=100?'good':ddPct>=60?'warn':'bad'}">${fmtPct(ddPct)}</td>
+    <td>${d.max_margin_month||''}</td><td class="${(d.max_monthly_margin||0)>=0.2?'good':(d.max_monthly_margin||0)>=0?'warn':'bad'}">${marginPct!==null?fmtPct(marginPct):'--'}</td>
+  </tr>`;
+  }).join('');
+  applyKpiFilters();
+}
+
+function sortKpiTable(field) {
+  if (kpiSort.field === field) kpiSort.asc = !kpiSort.asc;
+  else { kpiSort.field = field; kpiSort.asc = false; }
+  document.getElementById('arrow-dd').textContent = '';
+  document.getElementById('arrow-margin').textContent = '';
+  document.getElementById('arrow-'+field).textContent = kpiSort.asc ? ' ▲' : ' ▼';
+  renderKpiTable();
 }
 
 // ============================================================
