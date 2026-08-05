@@ -219,9 +219,10 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
 
     // Also get ALL monthly data for finding max
     const allMonthly = db.prepare(`
-      SELECT month, sales_volume, sales_revenue, gross_profit, gross_margin
+      SELECT month, SUM(sales_volume) as sales_volume, SUM(sales_revenue) as sales_revenue, SUM(gross_profit) as gross_profit, AVG(gross_margin) as gross_margin
       FROM profit_loss
       WHERE sku = ? AND month IN (${placeholders})
+      GROUP BY month
     `).all(sku.sku, ...npMonths.months);
 
     if (allMonthly.length === 0) {
