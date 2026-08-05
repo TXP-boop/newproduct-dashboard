@@ -919,8 +919,8 @@ app.get('/api/admin/template', requireAuth, (req, res) => {
     });
     const buf = XLSX.write(newWb, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', "attachment; filename*=UTF-8''%E6%96%B0%E5%93%81%E7%9B%91%E6%8E%A7%E6%95%B0%E6%8D%AE%E5%AF%BC%E5%85%A5%E6%A8%A1%E7%89%88.xlsx");
-    return res.send(Buffer.from(buf));
+    res.setHeader('Content-Disposition', 'attachment; filename=import_template.xlsx');
+    return res.send(buf);
   }
   res.status(404).json({ error: '模版文件未找到' });
 });
