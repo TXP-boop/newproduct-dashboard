@@ -179,10 +179,8 @@
         <p style="font-size:16px">📤 拖拽Excel文件到此处上传</p>
         <p style="color:#999;font-size:13px">支持导入模版格式（自动识别3个Sheet），也支持单独上传各类型文件</p>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="uploadFile()">
-        <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none" onchange="uploadFolder()">
         <div style="display:flex;gap:10px;margin-top:12px">
           <button class="btn" onclick="document.getElementById('fileInput').click()">📁 上传文件</button>
-          <button class="btn" onclick="document.getElementById('folderInput').click()">📂 上传文件夹</button>
           <a class="btn btn-outline" href="/api/admin/template" download style="text-decoration:none">📥 下载导入模版</a>
         </div>
       </div>
