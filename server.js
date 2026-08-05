@@ -865,79 +865,22 @@ app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
 });
 
 // ============================================================
-// TEMPLATE DOWNLOAD
+// TEMPLATE DOWNLOAD — 直接使用用户的模版文件
 // ============================================================
 app.get('/api/admin/template', requireAuth, (req, res) => {
-  const XLSX = require('xlsx');
-  const wb = XLSX.utils.book_new();
+  const fs = require('fs');
+  const path = require('path');
+  // 优先使用项目内置模版
+  const builtin = path.join(__dirname, 'public', 'template.xlsx');
+  const localPath = 'D:/桌面总文件/复盘&规划/新品监控模板/新品监控数据导入模版.xlsx';
+  const tmplPath = fs.existsSync(builtin) ? builtin : (fs.existsSync(localPath) ? localPath : null);
 
-  // Sheet 1: 利润测算（匹配第一批第二批源文件格式）
-  const s1 = [
-    '序号','产品编码','商品编码(SKU)','商品名称','商品编码(KAX)','商品名称(KAX)','产品分类','FRAM组套大厂号',
-    '子件空调滤型号FRAM','空调滤子件编码','子件空调滤包装数量','每箱数量',
-    '子件空气滤型号FRAM','空气滤子件编码','子件空气滤包装数量','每箱数量',
-    '售卖地区','包装编码','供应商','最新采购价含税￥','长cm','宽cm','高cm','重kg',
-    '不含税采购价','预估头程费用','预估FBA尾程','预估海外仓尾程','FBA仓储费用','海外仓储费用','SC税费',
-    'FBA规格','尾程规格','全量车型','平均车龄','vio','竞对详情','中位价','中位价销量','组内销量和',
-    'SC利润测算价$','15%红线价$','材料占比','税费占比','头程占比','FBA尾程占比','FBA仓储占比',
-    'FBA毛利','VC-LP定价','VC-CP定价','亚马逊利润','亚马逊利润率','调整后毛利率',
-    '*VC-CP定价','*亚马逊利润','*亚马逊利润率','MOQ','交期','产品下单建议',
-    'PT品牌-DD值','kax品牌-DD值','推广占比(测算)','退款率(测算)'
-  ];
-  const ws1 = XLSX.utils.aoa_to_sheet([s1]);
-  ws1['!cols'] = s1.map(h => ({ wch: h.length > 15 ? 18 : 14 }));
-  XLSX.utils.book_append_sheet(wb, ws1, '利润测算');
-
-  // Sheet 2: 损益分析（匹配源文件格式）
-  const s2 = [
-    '业务分类','产品分类','商品编码(SKU)','月份(YYYYMM)','销量','销售额','毛利润-实际','毛利率',
-    '返利前毛利率','客单价$','材料占比','头程占比','尾程占比','退款率含vc','仓储费占比',
-    '推广占比合计（含广告折扣））','库内操作费占比','佣金占比','税费占比','平台费占比',
-    '退换成本占比','移仓换标占比','VC退款率','店铺费用占比合计'
-  ];
-  const ws2 = XLSX.utils.aoa_to_sheet([s2]);
-  ws2['!cols'] = s2.map(() => ({ wch: 14 }));
-  XLSX.utils.book_append_sheet(wb, ws2, '损益分析');
-
-  // Sheet 3: 进销存（匹配源文件格式）
-  const s3 = [
-    '商品编码(SKU)','品线','业务分类','系列','型号','商品等级','开发人员',
-    'FBA可用库存','FBA在途库存','海外仓可用库存','海外仓在途库存','本地仓可用库存','总库存',
-    '采购在途库存','含采购在途总库存','总库存金额','含采购在途总库存金额',
-    '7天销量','14天销量','30天销量','30-60天销量','60-90天销量',
-    '近7天入库数量','近14天入库数量','近30天入库数量','采购单价','30天出库金额',
-    '全链路库销比','成品库销比','离岸库销比','FBA库销比','海外仓在库库销比','海外仓在途库销比',
-    '库销比-预警值','滞销数量','库销比-红线值','滞销金额','品牌',
-    'FBA30天销量','FBM30天销量','FBA首次到货时间','FBM首次到货时间','是否滞销','品类','PO在库','PO在途'
-  ];
-  const ws3 = XLSX.utils.aoa_to_sheet([s3]);
-  ws3['!cols'] = s3.map(() => ({ wch: 14 }));
-  XLSX.utils.book_append_sheet(wb, ws3, '进销存');
-
-  // Sheet 4: 填写说明
-  const s4 = [
-    ['数据导入模版说明（字段与原导出文件完全一致）'],
-    [''],
-    ['Sheet 利润测算 — 与第一批/第二批利润测算Excel格式一致'],
-    ['  ⚠ 新增2列：推广占比(测算) 填 0.1769，退款率(测算) 填 0.0336'],
-    ['  竞对详情格式: B0D2HQXTR6:31.91/289.39/9233.75(ITESIER_CN)|B0DQ8:29.27/110.11/3222(SERVKITOUR)'],
-    [''],
-    ['Sheet 损益分析 — 与滤清组套损益分析Excel格式一致'],
-    ['  每月每SKU一行，占比填小数（0.256 = 25.6%）'],
-    [''],
-    ['Sheet 进销存 — 与进销存报表Excel格式一致'],
-    ['  FBA首次到货时间填Excel日期格式或YYYY-MM-DD'],
-    [''],
-    ['上传时自动识别Sheet名称，数据追加不覆盖']
-  ];
-  const ws4 = XLSX.utils.aoa_to_sheet(s4);
-  ws4['!cols'] = [{ wch: 80 }];
-  XLSX.utils.book_append_sheet(wb, ws4, '填写说明');
-
-  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', "attachment; filename*=UTF-8''%E6%96%B0%E5%93%81%E7%9B%91%E6%8E%A7%E6%95%B0%E6%8D%AE%E5%AF%BC%E5%85%A5%E6%A8%A1%E7%89%88.xlsx");
-  res.send(Buffer.from(buf));
+  if (tmplPath) {
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', "attachment; filename*=UTF-8''%E6%96%B0%E5%93%81%E7%9B%91%E6%8E%A7%E6%95%B0%E6%8D%AE%E5%AF%BC%E5%85%A5%E6%A8%A1%E7%89%88.xlsx");
+    return res.sendFile(tmplPath);
+  }
+  res.status(404).json({ error: '模版文件未找到' });
 });
 
 // ============================================================
@@ -1020,47 +963,37 @@ function importExcelData(db, data, file_type, category) {
     if (!row || !Array.isArray(row)) continue;
 
     if (file_type === 'profit_estimation') {
-      // 源格式列: col1=产品编码, col2=SKU, col3=PT商品名称, col4=KAX商品编码, col5=KAX商品名称
-      // col7=FRAM组套大厂号, col19=采购价含税, col24=不含税采购价
-      // col25=预估头程, col26=预估FBA尾程, col36=竞对详情
-      // col40=SC利润测算价, col41=红线价, col42-46=各费率占比
-      // col59=PT-DD值, col60=KAX-DD值
-      // col61=推广占比(测算), col62=退款率(测算)
-      const sku = String(row[2] || '').trim().toUpperCase();
+      // 用户模版格式:
+      // col0=SKU, col1=商品名称, col2=型号, col3=DD值
+      // col4=不含税采购价, col5=预估头程, col6=预估FBA尾程
+      // col18=AMZ竞对详情
+      // col23=FBA-测算价, col25=FBA-红线价
+      // col26=材料占比, col27=税费占比, col28=头程占比, col29=尾程占比
+      // col30=FBA-推广占比, col31=FBA-退款占比, col35=FBA-仓储占比
+      const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku) continue;
-      const skuClean = sku;
-      const ptSku = String(row[1] || '').trim();
-      const ddValue = parseFloat(row[59]) || parseFloat(row[60]) || 0;
       db.prepare(`INSERT OR IGNORE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(category, ptSku, skuClean, row[3]||'', row[7]||'', '', parseFloat(row[40])||null, parseFloat(row[41])||null, ddValue, parseFloat(row[42])||null, parseFloat(row[43])||null, parseFloat(row[44])||null, parseFloat(row[45])||null, parseFloat(row[46])||null, parseFloat(row[19])||null, parseFloat(row[24])||null, parseFloat(row[25])||null, parseFloat(row[26])||null, String(row[36]||'').replace(/\n/g,' | '));
+        .run(category, sku, sku, row[1]||'', row[2]||'', '', parseFloat(row[23])||null, parseFloat(row[25])||null, parseFloat(row[3])||0, parseFloat(row[26])||null, parseFloat(row[27])||null, parseFloat(row[28])||null, parseFloat(row[29])||null, parseFloat(row[35])||null, null, parseFloat(row[4])||null, parseFloat(row[5])||null, parseFloat(row[6])||null, String(row[18]||'').replace(/\n/g,' | '));
       count++;
-      // Also insert KAX SKU if different
-      const kaxSku = String(row[4] || '').trim().toUpperCase();
-      if (kaxSku && kaxSku !== skuClean && kaxSku.length >= 7) {
-        db.prepare(`INSERT OR IGNORE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-          .run(category, ptSku, kaxSku, row[5]||'', row[7]||'', '', parseFloat(row[40])||null, parseFloat(row[41])||null, ddValue, parseFloat(row[42])||null, parseFloat(row[43])||null, parseFloat(row[44])||null, parseFloat(row[45])||null, parseFloat(row[46])||null, parseFloat(row[19])||null, parseFloat(row[24])||null, parseFloat(row[25])||null, parseFloat(row[26])||null, String(row[36]||'').replace(/\n/g,' | '));
-        count++;
-      }
     } else if (file_type === 'profit_loss') {
-      // 源格式: col2=SKU, col3=月份, col4=销量, col5=销售额, col6=毛利润, col7=毛利率
-      // col10=材料占比, col11=头程占比, col12=尾程占比, col13=退款率含vc, col14=仓储费占比, col15=推广占比
+      // 用户模版: col2=SKU, col5=月份, col6=销量, col7=销售额, col8=毛利润, col9=毛利率
+      // col12=材料占比, col13=头程占比, col14=尾程占比, col15=退款率含vc, col16=仓储费占比, col17=推广占比
       const sku = String(row[2] || '').trim().toUpperCase();
       if (!sku || sku === '合计') continue;
-      const month = String(row[3] || '').trim();
+      const month = String(row[5] || '').trim();
       if (month === '合计' || !month) continue;
-      const salesVol = parseFloat(row[4]) || 0; const salesRev = parseFloat(row[5]) || 0;
+      const salesVol = parseFloat(row[6]) || 0; const salesRev = parseFloat(row[7]) || 0;
       db.prepare(`INSERT INTO profit_loss (category, sku, month, sales_volume, sales_revenue, gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio, refund_rate, warehouse_ratio, promotion_ratio, unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(category, sku, month, salesVol, salesRev, parseFloat(row[6])||0, parseFloat(row[7])||0, parseFloat(row[10])||0, parseFloat(row[11])||0, parseFloat(row[12])||0, parseFloat(row[13])||0, parseFloat(row[14])||0, parseFloat(row[15])||0, salesVol>0?salesRev/salesVol:0);
+        .run(category, sku, month, salesVol, salesRev, parseFloat(row[8])||0, parseFloat(row[9])||0, parseFloat(row[12])||0, parseFloat(row[13])||0, parseFloat(row[14])||0, parseFloat(row[15])||0, parseFloat(row[16])||0, parseFloat(row[17])||0, salesVol>0?salesRev/salesVol:0);
       count++;
     } else if (file_type === 'inventory') {
-      // 源格式: col0=SKU, col7=FBA可用, col8=FBA在途, col12=总库存
-      // col17=7天销量, col18=14天销量, col19=30天销量
-      // col37=品牌, col40=FBA首次到货时间
+      // 用户模版: col0=SKU, col5=FBA可用, col6=FBA在途, col10=总库存
+      // col15=7天, col16=14天, col17=30天, col35=品牌, col38=FBA首次到货
       const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku || sku === '合计') continue;
       const serialToDate = (s) => { if(!s||s<=0||isNaN(s)) return String(s||''); const d=new Date((new Date(1899,11,30)).getTime()+s*86400000); return d.toISOString().slice(0,10); };
       db.prepare(`INSERT INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
-        .run(category, sku, String(row[37]||''), serialToDate(parseFloat(row[40])), parseInt(row[7])||0, parseInt(row[8])||0, parseInt(row[12])||0, parseFloat(row[17])||0, parseFloat(row[18])||0, parseFloat(row[19])||0);
+        .run(category, sku, String(row[35]||''), serialToDate(parseFloat(row[38])), parseInt(row[5])||0, parseInt(row[6])||0, parseInt(row[10])||0, parseFloat(row[15])||0, parseFloat(row[16])||0, parseFloat(row[17])||0);
       count++;
     }
   }
