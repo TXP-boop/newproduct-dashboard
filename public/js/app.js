@@ -598,19 +598,62 @@ async function createCategoryFromAdmin() {
 async function uploadFile() {
   const file = document.getElementById('fileInput').files[0];
   if (!file) return;
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('file_type', document.getElementById('fileType').value);
-  formData.append('category', currentCategory);
+  await doUpload(file);
+  document.getElementById('fileInput').value = '';
+}
+
+async function uploadFolder() {
+  const files = document.getElementById('folderInput').files;
+  if (!files || files.length === 0) return;
   const status = document.getElementById('uploadStatus');
-  status.textContent = '上传中...'; status.className = '';
+  let ok = 0, fail = 0;
+  const excelFiles = [...files].filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
+  status.textContent = `文件夹中共 ${excelFiles.length} 个Excel文件，开始上传...`; status.className = '';
+  for (const file of excelFiles) {
+    try {
+      await doUpload(file);
+      ok++;
+      status.textContent = `进度: ${ok + fail}/${excelFiles.length} (${ok} 成功, ${fail} 失败)`;
+    } catch(e) { fail++; }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  status.textContent = `✅ 文件夹上传完成！${ok} 个文件成功，${fail} 个失败`;
+  status.className = ok > 0 ? 'success' : 'error';
+  document.getElementById('folderInput').value = '';
+  loadHistory();
+}
+
+async function uploadByPath() {
+  const filePath = document.getElementById('filePathInput').value.trim();
+  if (!filePath) return;
+  const status = document.getElementById('uploadStatus');
+  status.textContent = '读取中...'; status.className = '';
   try {
-    const resp = await fetch('/api/admin/upload', { method:'POST', body:formData });
+    const resp = await fetch('/api/admin/upload-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filePath,
+        file_type: document.getElementById('fileType').value,
+        category: currentCategory
+      })
+    });
     const data = await resp.json();
     if (data.success) { status.textContent = `✅ 上传成功！导入 ${data.rows_imported} 行数据`; status.className='success'; loadHistory(); }
     else { status.textContent = '❌ '+(data.error||'上传失败'); status.className='error'; }
   } catch(e) { status.textContent = '❌ 上传失败: '+e.message; status.className='error'; }
-  document.getElementById('fileInput').value = '';
+  document.getElementById('filePathInput').value = '';
+}
+
+async function doUpload(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('file_type', document.getElementById('fileType').value);
+  formData.append('category', currentCategory);
+  const resp = await fetch('/api/admin/upload', { method:'POST', body:formData });
+  const data = await resp.json();
+  if (!data.success) throw new Error(data.error);
+  return data;
 }
 
 // ============================================================

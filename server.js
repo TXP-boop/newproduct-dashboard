@@ -902,6 +902,64 @@ app.delete('/api/admin/category-admins/:id', requireAdmin, (req, res) => {
 // ============================================================
 
 // Upload Excel file
+// Path-based upload (reads file from local disk)
+app.post('/api/admin/upload-path', requireAdmin, (req, res) => {
+  const { filePath, file_type } = req.body;
+  if (!filePath || !file_type) return res.status(400).json({ error: '缺少参数' });
+  if (!['profit_estimation', 'profit_loss', 'inventory'].includes(file_type)) return res.status(400).json({ error: '无效文件类型' });
+
+  const fs = require('fs');
+  if (!fs.existsSync(filePath)) return res.status(400).json({ error: '文件路径不存在: ' + filePath });
+
+  const XLSX = require('xlsx');
+  const db = getDb();
+  const category = req.body.category || req.session.currentCategory || '滤清组套';
+
+  try {
+    const wb = XLSX.readFile(filePath);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const filename = filePath.split(/[/\\]/).pop();
+    const count = importExcelData(db, data, file_type, category);
+
+    db.prepare(`INSERT INTO upload_log (filename, file_type, category, rows_imported, uploaded_by) VALUES (?, ?, ?, ?, ?)`)
+      .run(filename, file_type, category, count, req.session.user.name);
+
+    res.json({ success: true, rows_imported: count });
+  } catch (e) {
+    res.status(500).json({ error: '文件解析失败: ' + e.message });
+  }
+});
+
+// Reusable Excel import function
+function importExcelData(db, data, file_type, category) {
+  let count = 0;
+  const startRow = file_type === 'profit_loss' ? 9 : file_type === 'inventory' ? 6 : 3;
+
+  for (let i = startRow; i < data.length; i++) {
+    const row = data[i];
+    if (file_type === 'profit_loss') {
+      const sku = (row[2] || '').toString().trim().toUpperCase();
+      if (!sku || sku === '合计') continue;
+      const month = (row[3] || '').toString().trim();
+      if (month === '合计') continue;
+      const salesVol = parseFloat(row[4]) || 0;
+      const salesRev = parseFloat(row[5]) || 0;
+      db.prepare(`INSERT INTO profit_loss (category, sku, month, sales_volume, sales_revenue, gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio, refund_rate, warehouse_ratio, promotion_ratio, unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+        .run(category, sku, month, salesVol, salesRev, parseFloat(row[6])||0, parseFloat(row[7])||0, parseFloat(row[10])||0, parseFloat(row[11])||0, parseFloat(row[12])||0, parseFloat(row[13])||0, parseFloat(row[14])||0, parseFloat(row[15])||0, salesVol>0?salesRev/salesVol:0);
+      count++;
+    } else if (file_type === 'inventory') {
+      const sku = (row[0] || '').toString().trim().toUpperCase();
+      if (!sku || sku === '合计') continue;
+      const serialToDate = (s) => { if(!s||s<=0) return null; const d=new Date((new Date(1899,11,30)).getTime()+s*86400000); return d.toISOString().slice(0,10); };
+      db.prepare(`INSERT INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+        .run(category, sku, row[37]||'', serialToDate(parseFloat(row[40])), parseInt(row[7])||0, parseInt(row[8])||0, parseInt(row[12])||0, parseFloat(row[17])||0, parseFloat(row[18])||0, parseFloat(row[19])||0);
+      count++;
+    }
+  }
+  return count;
+}
+
 app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: '请选择文件' });
