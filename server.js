@@ -705,7 +705,8 @@ app.get('/api/dashboard/refunds', requireAuth, (req, res) => {
   // Group by fram_model
   const modelMap = {};
   for (const [sku, data] of Object.entries(skuRefundMap)) {
-    const model = data.fram_model || sku; // fallback to SKU if no model
+    if (!data.fram_model) continue; // skip SKUs without model
+    const model = data.fram_model;
     if (!modelMap[model]) {
       modelMap[model] = {
         fram_model: model,
