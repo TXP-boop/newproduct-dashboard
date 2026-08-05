@@ -1092,6 +1092,8 @@ app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) =>
     const isTemplate = sheetNames.includes('新品利润测算') || sheetNames.includes('月度损益') || sheetNames.includes('进销存');
 
     if (isTemplate) {
+      // Preserve scraped competitor data before clearing
+      const scrapedData = db.prepare('SELECT sku, competitor_detail FROM profit_estimation WHERE category = ? AND competitor_detail LIKE ?').all(category, '%[↑%');
       // Clear existing data then import fresh
       db.prepare('DELETE FROM profit_estimation WHERE category = ?').run(category);
       db.prepare('DELETE FROM profit_loss WHERE category = ?').run(category);
@@ -1108,6 +1110,10 @@ app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) =>
       totalCount += processSheet('新品利润测算', 'profit_estimation');
       totalCount += processSheet('月度损益', 'profit_loss');
       totalCount += processSheet('进销存', 'inventory');
+      // Restore scraped competitor data
+      for (const s of scrapedData) {
+        db.prepare('UPDATE profit_estimation SET competitor_detail = ? WHERE sku = ? AND category = ?').run(s.competitor_detail, s.sku, category);
+      }
     } else {
       // Legacy: single sheet, try to detect type from sheet name
       const sn = sheetNames[0];
