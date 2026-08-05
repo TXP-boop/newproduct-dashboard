@@ -1047,7 +1047,7 @@ function importExcelData(db, data, file_type, category) {
       if (!sku) continue;
       const estPromo = parseFloat(row[30]); // 模版中的推广占比
       const estRefund = parseFloat(row[31]); // 模版中的退款占比
-      db.prepare(`INSERT OR IGNORE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, est_promotion_rate, est_refund_rate, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT OR REPLACE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, est_promotion_rate, est_refund_rate, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(category, sku, sku, row[1]||'', row[2]||'', '', parseFloat(row[23])||null, parseFloat(row[25])||null, parseFloat(row[3])||0, parseFloat(row[26])||null, parseFloat(row[27])||null, parseFloat(row[28])||null, parseFloat(row[29])||null, parseFloat(row[35])||null, null, parseFloat(row[4])||null, parseFloat(row[5])||null, parseFloat(row[6])||null, isNaN(estPromo)?0.1769:estPromo, isNaN(estRefund)?0.0336:estRefund, String(row[18]||'').replace(/\n/g,' | '));
       count++;
     } else if (file_type === 'profit_loss') {
@@ -1058,7 +1058,7 @@ function importExcelData(db, data, file_type, category) {
       const month = String(row[5] || '').trim();
       if (month === '合计' || !month) continue;
       const salesVol = parseFloat(row[6]) || 0; const salesRev = parseFloat(row[7]) || 0;
-      db.prepare(`INSERT OR IGNORE INTO profit_loss (category, sku, month, sales_volume, sales_revenue, gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio, refund_rate, warehouse_ratio, promotion_ratio, unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT OR REPLACE INTO profit_loss (category, sku, month, sales_volume, sales_revenue, gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio, refund_rate, warehouse_ratio, promotion_ratio, unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .run(category, sku, month, salesVol, salesRev, parseFloat(row[8])||0, parseFloat(row[9])||0, parseFloat(row[12])||0, parseFloat(row[13])||0, parseFloat(row[14])||0, parseFloat(row[15])||0, parseFloat(row[16])||0, parseFloat(row[17])||0, salesVol>0?salesRev/salesVol:0);
       count++;
     } else if (file_type === 'inventory') {
@@ -1067,7 +1067,7 @@ function importExcelData(db, data, file_type, category) {
       const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku || sku === '合计') continue;
       const serialToDate = (s) => { if(!s||s<=0||isNaN(s)) return String(s||''); const d=new Date((new Date(1899,11,30)).getTime()+s*86400000); return d.toISOString().slice(0,10); };
-      db.prepare(`INSERT OR IGNORE INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+      db.prepare(`INSERT OR REPLACE INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
         .run(category, sku, String(row[35]||''), serialToDate(parseFloat(row[38])), parseInt(row[5])||0, parseInt(row[6])||0, parseInt(row[10])||0, parseFloat(row[15])||0, parseFloat(row[16])||0, parseFloat(row[17])||0);
       count++;
     }
