@@ -310,7 +310,7 @@ async function loadPanel2() {
           <td class="${Math.abs((f.adjusted_rate||0)-(f.estimated_rate||0))>0.02?'warn':''}">${fp(f.adjusted_rate*100)}</td>`;
       }).join('');
       return `<tr>
-        <td>${d.sku}</td><td title="${d.product_name||''}">${(d.product_name||'').substring(0,20)}</td><td>${d.batch||''}</td>
+        <td>${d.sku}</td>
         <td>${fmtUSD(d.estimated_price)}</td><td>${fmtUSD(d.actual_unit_price)}</td>
         ${cells}
       </tr>`;
@@ -448,11 +448,11 @@ async function loadPanel4() {
         brands.forEach((b, bi) => {
           const s = (b.skus||[])[i];
           if (s) {
-            html += `<td>${b.brand}</td><td>${s.sku}</td><td title="${s.product_name||''}">${(s.product_name||'').substring(0,25)}</td><td class="bad">${s.weighted_refund_rate}%</td><td>${Math.round(s.total_volume_3m||0)}</td>`;
+            html += `<td>${b.brand}</td><td>${s.sku}</td><td class="bad">${s.weighted_refund_rate}%</td><td>${Math.round(s.total_volume_3m||0)}</td>`;
             if (i === 0 && bi === 0) html += `<td rowspan="${maxRows}"><button class="btn btn-sm" onclick="showRefundDetail('${d.fram_model}')">📋 详情</button></td>`;
-          } else { html += '<td></td><td></td><td></td><td></td><td></td>'; }
+          } else { html += '<td></td><td></td><td></td><td></td>'; }
         });
-        if (brands.length === 1) html += '<td></td><td></td><td></td><td></td><td></td>';
+        if (brands.length === 1) html += '<td></td><td></td><td></td><td></td>';
         html += '</tr>';
       }
     });
