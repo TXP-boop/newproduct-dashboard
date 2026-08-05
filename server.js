@@ -653,7 +653,7 @@ function processPriceResults(models, db, res) {
         const revenue = parseFloat(m[4]);
         const seller = m[5] || 'Unknown';
         const note = m[6] || '';
-        const isScraped = note.includes('涨') || note.includes('跌');
+        const isScraped = note.includes('涨') || note.includes('跌') || part.includes(':$');
 
         // Reconstruct historical price from change note
         let histPrice = isScraped ? null : price;
