@@ -598,7 +598,17 @@ async function createCategoryFromAdmin() {
 async function uploadFile() {
   const file = document.getElementById('fileInput').files[0];
   if (!file) return;
-  await doUpload(file);
+  const status = document.getElementById('uploadStatus');
+  status.textContent = '上传中...'; status.className = '';
+  try {
+    const result = await doUpload(file);
+    status.textContent = `✅ 上传成功！导入 ${result.rows_imported} 行 (${result.detail || ''})`;
+    status.className = 'success';
+    loadHistory();
+  } catch(e) {
+    status.textContent = '❌ ' + (e.message || '上传失败');
+    status.className = 'error';
+  }
   document.getElementById('fileInput').value = '';
 }
 
@@ -608,16 +618,17 @@ async function uploadFolder() {
   const status = document.getElementById('uploadStatus');
   let ok = 0, fail = 0;
   const excelFiles = [...files].filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
-  status.textContent = `文件夹中共 ${excelFiles.length} 个Excel文件，开始上传...`; status.className = '';
+  if (excelFiles.length === 0) { status.textContent = '❌ 未找到Excel文件'; status.className='error'; return; }
+  status.textContent = `文件夹中共 ${excelFiles.length} 个文件，开始上传...`; status.className = '';
   for (const file of excelFiles) {
     try {
-      await doUpload(file);
+      const result = await doUpload(file);
       ok++;
-      status.textContent = `进度: ${ok + fail}/${excelFiles.length} (${ok} 成功, ${fail} 失败)`;
-    } catch(e) { fail++; }
+      status.textContent = `进度: ${ok + fail}/${excelFiles.length} - ${file.name} ✅`;
+    } catch(e) { fail++; status.textContent = `进度: ${ok + fail}/${excelFiles.length} - ${file.name} ❌`; }
     await new Promise(r => setTimeout(r, 300));
   }
-  status.textContent = `✅ 文件夹上传完成！${ok} 个文件成功，${fail} 个失败`;
+  status.textContent = `✅ 文件夹上传完成！${ok} 成功, ${fail} 失败`;
   status.className = ok > 0 ? 'success' : 'error';
   document.getElementById('folderInput').value = '';
   loadHistory();
