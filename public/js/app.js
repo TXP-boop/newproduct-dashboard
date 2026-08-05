@@ -549,6 +549,10 @@ function updateShareUrl() {
   document.getElementById('shareUrl').value = url + '?category=' + encodeURIComponent(currentCategory);
 }
 
+function downloadReport() {
+  window.open(apiUrl('/api/report'), '_blank');
+}
+
 function copyShareUrl() {
   const input = document.getElementById('shareUrl');
   input.select();

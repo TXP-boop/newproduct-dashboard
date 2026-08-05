@@ -1023,6 +1023,142 @@ app.delete('/api/admin/category-admins/:id', requireAdmin, (req, res) => {
 });
 
 // ============================================================
+// REPORT GENERATION
+// ============================================================
+app.get('/api/report', requireAuth, async (req, res) => {
+  const db = getDb();
+  const category = getCategory(req);
+  const now = new Date().toLocaleString('zh-CN');
+
+  // Fetch all dashboard data
+  const kpiSummary = { launched: 0, active: 0, activationRate: 0, ddRate: 0, margin: 0 };
+  const allSkus = db.prepare(`SELECT pe.sku,pe.dd_value,pe.fram_model,pe.product_name,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE pe.category=?`).all(category);
+  const ddResults = []; const marginResults = []; let totalEstDD = 0, totalActDD = 0;
+  let totalProfit = 0, totalRevenue = 0;
+
+  for (const s of allSkus) {
+    if (!s.fba_first_arrival) continue;
+    const npM = getNewProductMonths(db, s.sku);
+    if (!npM) continue;
+    const ph = npM.months.map(()=>'?').join(',');
+    const months = db.prepare(`SELECT * FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0`).all(s.sku, ...npM.months);
+    if (months.length === 0) continue;
+    const maxS = months.reduce((a,b)=>b.sales_volume>a.sales_volume?b:a, months[0]);
+    const maxM = months.reduce((a,b)=>(b.gross_margin??-99)>(a.gross_margin??-99)?b:a, months[0]);
+    const ad = maxS.sales_volume/30; totalActDD += ad; totalEstDD += (s.dd_value||0);
+    ddResults.push({sku:s.sku,model:s.fram_model,ddPct:s.dd_value>0?ad/s.dd_value*100:0,est:s.dd_value,act:Math.round(ad*100)/100});
+    marginResults.push({sku:s.sku,model:s.fram_model,margin:maxM.gross_margin,profit:maxM.gross_profit,revenue:maxM.sales_revenue});
+    totalProfit += (maxM.gross_profit||0); totalRevenue += (maxM.sales_revenue||0);
+  }
+  kpiSummary.launched = allSkus.filter(s=>s.fba_first_arrival).length;
+  kpiSummary.active = ddResults.length;
+  kpiSummary.activationRate = kpiSummary.launched>0?Math.round(kpiSummary.active/kpiSummary.launched*10000)/100:0;
+  kpiSummary.ddRate = totalEstDD>0?Math.round(totalActDD/totalEstDD*10000)/100:0;
+  kpiSummary.margin = totalRevenue>0?Math.round(totalProfit/totalRevenue*10000)/100:0;
+
+  // Fee data
+  const feeSkus = db.prepare(`SELECT pe.sku,pe.estimated_price,pe.first_leg_ratio as efl,pe.last_leg_ratio as ell,pe.warehouse_ratio as ewh,pe.est_promotion_rate as epr,pe.est_refund_rate as erf,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE pe.category=? AND inv.fba_first_arrival IS NOT NULL`).all(category);
+  let flEst=0,flAct=0,llEst=0,llAct=0,whEst=0,whAct=0,prEst=0,prAct=0,rfEst=0,rfAct=0,totalRev=0;
+  for (const s of feeSkus) {
+    const npM = getNewProductMonths(db, s.sku); if (!npM) continue;
+    const ph = npM.months.map(()=>'?').join(',');
+    const m = db.prepare(`SELECT * FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0 ORDER BY sales_volume DESC LIMIT 1`).get(s.sku, ...npM.months);
+    if (!m) continue;
+    const rev = m.sales_revenue||0; totalRev += rev;
+    flEst += (s.efl||0)*rev; flAct += (m.first_leg_ratio||0)*rev;
+    llEst += (s.ell||0)*rev; llAct += (m.last_leg_ratio||0)*rev;
+    whEst += (s.ewh||0)*rev; whAct += (m.warehouse_ratio||0)*rev;
+    prEst += (s.epr||0)*rev; prAct += (m.promotion_ratio||0)*rev;
+    rfEst += (s.erf||0)*rev; rfAct += (m.refund_rate||0)*rev;
+  }
+
+  // Price data
+  const priceModels = db.prepare(`SELECT pe.fram_model,GROUP_CONCAT(pe.sku) as skus,MAX(pe.estimated_price) as ep,MAX(pe.redline_price) as rp FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku WHERE pe.fram_model!='' AND inv.fba_first_arrival IS NOT NULL AND pe.category=? GROUP BY pe.fram_model`).all(category);
+  let belowRedline = 0;
+  for (const m of priceModels) {
+    const skuList = m.skus.split(',')[0].trim();
+    const npM = getNewProductMonths(db, skuList); if (!npM) continue;
+    const ph = npM.months.map(()=>'?').join(',');
+    const pm = db.prepare(`SELECT sales_revenue,sales_volume FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0 ORDER BY sales_volume DESC LIMIT 1`).get(skuList, ...npM.months);
+    if (pm && m.rp) { const ap = (pm.sales_revenue/(pm.sales_volume||1))/6.7; if (ap < m.rp) belowRedline++; }
+  }
+
+  // Refund data
+  const highRefund = db.prepare(`SELECT pl.sku,SUM(pl.sales_revenue) as rev,SUM(pl.refund_rate*pl.sales_revenue) as rf,MAX(pe.fram_model) as fm FROM profit_loss pl LEFT JOIN profit_estimation pe ON pl.sku=pe.sku AND pl.category=pe.category WHERE pl.month>='202605' AND pl.month<='202608' AND pl.category=? GROUP BY pl.sku HAVING rev>0 AND rf/rev>0.08`).all(category);
+
+  // Top/bottom performers
+  const lowDD = ddResults.filter(d=>d.ddPct<50).sort((a,b)=>a.ddPct-b.ddPct).slice(0,5);
+  const highDD = ddResults.filter(d=>d.ddPct>=150).sort((a,b)=>b.ddPct-a.ddPct).slice(0,5);
+  const lowMargin = marginResults.filter(d=>d.margin<0).sort((a,b)=>a.margin-b.margin).slice(0,5);
+  const highMargin = marginResults.filter(d=>d.margin>=0.25).sort((a,b)=>b.margin-a.margin).slice(0,5);
+
+  const pct = v => (v*100).toFixed(2)+'%';
+  const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>新品复盘报告 - ${category}</title>
+<style>body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;max-width:960px;margin:0 auto;padding:30px;color:#333;line-height:1.8}
+h1{text-align:center;font-size:24px;border-bottom:2px solid #1677ff;padding-bottom:12px;margin-bottom:8px}
+.date{text-align:center;color:#999;font-size:13px;margin-bottom:30px}
+h2{font-size:18px;color:#1677ff;border-left:4px solid #1677ff;padding-left:12px;margin:30px 0 16px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
+.kpi-card{background:#f0f5ff;padding:16px;border-radius:8px;text-align:center}
+.kpi-val{font-size:28px;font-weight:700;color:#1677ff}.kpi-lbl{font-size:13px;color:#666;margin-top:4px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+th{background:#fafafa;padding:8px 12px;text-align:left;border:1px solid #e8e8e8;font-weight:600}
+td{padding:8px 12px;border:1px solid #e8e8e8}
+.red{color:#ff4d4f;font-weight:600}.green{color:#52c41a}.warn{color:#fa8c16}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px}
+.tag-red{background:#fff2f0;color:#ff4d4f}.tag-green{background:#f6ffed;color:#52c41a}.tag-warn{background:#fffbe6;color:#fa8c16}
+.footer{text-align:center;color:#ccc;font-size:12px;margin-top:40px;border-top:1px solid #f0f0f0;padding-top:16px}
+@media print{body{padding:10px}.kpi-grid{grid-template-columns:repeat(4,1fr)}}</style></head>
+<body>
+<h1>📊 ${category} 新品复盘报告</h1>
+<p class="date">生成时间: ${now} | 数据来源: 新品监控看板自动生成</p>
+
+<h2>一、新品指标达成</h2>
+<div class="kpi-grid">
+<div class="kpi-card"><div class="kpi-val">${kpiSummary.launched}</div><div class="kpi-lbl">上架SKU数</div></div>
+<div class="kpi-card"><div class="kpi-val">${kpiSummary.activationRate}%</div><div class="kpi-lbl">动销率</div></div>
+<div class="kpi-card"><div class="kpi-val">${kpiSummary.ddRate}%</div><div class="kpi-lbl">DD达成率</div></div>
+<div class="kpi-card"><div class="kpi-val">${kpiSummary.margin}%</div><div class="kpi-lbl">毛利率</div></div>
+</div>
+
+<p><b>DD达成率最低5个SKU：</b>${lowDD.map(d=>d.sku+'(<span class="red">'+d.ddPct.toFixed(2)+'%</span>)').join('、') || '无'}</p>
+<p><b>DD达成率最高5个SKU：</b>${highDD.map(d=>d.sku+'(<span class="green">'+d.ddPct.toFixed(2)+'%</span>)').join('、') || '无'}</p>
+<p><b>毛利率最低5个SKU：</b>${lowMargin.map(d=>d.sku+'(<span class="red">'+(d.margin*100).toFixed(2)+'%</span>)').join('、') || '无'}</p>
+<p><b>毛利率最高5个SKU：</b>${highMargin.map(d=>d.sku+'(<span class="green">'+(d.margin*100).toFixed(2)+'%</span>)').join('、') || '无'}</p>
+
+<h2>二、费率比对</h2>
+<table><tr><th>费用项</th><th>测算占比</th><th>实际占比</th><th>偏差</th></tr>
+<tr><td>头程</td><td>${totalRev>0?(flEst/totalRev*100).toFixed(2):0}%</td><td>${totalRev>0?(flAct/totalRev*100).toFixed(2):0}%</td><td class="${Math.abs(flAct-flEst)/totalRev>0.02?'red':'green'}">${totalRev>0?((flAct-flEst)/totalRev*100).toFixed(2):0}pp</td></tr>
+<tr><td>尾程</td><td>${totalRev>0?(llEst/totalRev*100).toFixed(2):0}%</td><td>${totalRev>0?(llAct/totalRev*100).toFixed(2):0}%</td><td class="${Math.abs(llAct-llEst)/totalRev>0.02?'red':'green'}">${totalRev>0?((llAct-llEst)/totalRev*100).toFixed(2):0}pp</td></tr>
+<tr><td>仓储</td><td>${totalRev>0?(whEst/totalRev*100).toFixed(2):0}%</td><td>${totalRev>0?(whAct/totalRev*100).toFixed(2):0}%</td><td class="${Math.abs(whAct-whEst)/totalRev>0.02?'red':'green'}">${totalRev>0?((whAct-whEst)/totalRev*100).toFixed(2):0}pp</td></tr>
+<tr><td>推广</td><td>${totalRev>0?(prEst/totalRev*100).toFixed(2):0}%</td><td>${totalRev>0?(prAct/totalRev*100).toFixed(2):0}%</td><td class="${Math.abs(prAct-prEst)/totalRev>0.02?'red':'green'}">${totalRev>0?((prAct-prEst)/totalRev*100).toFixed(2):0}pp</td></tr>
+<tr><td>退款</td><td>${totalRev>0?(rfEst/totalRev*100).toFixed(2):0}%</td><td>${totalRev>0?(rfAct/totalRev*100).toFixed(2):0}%</td><td class="${Math.abs(rfAct-rfEst)/totalRev>0.02?'red':'green'}">${totalRev>0?((rfAct-rfEst)/totalRev*100).toFixed(2):0}pp</td></tr>
+</table>
+
+<h2>三、价格监测</h2>
+<p>涉及竞对的型号共 ${priceModels.length} 个，其中 <span class="red">${belowRedline} 个</span>型号实际售价低于红线价。</p>
+
+<h2>四、高退款型号清单</h2>
+<p>近3月加权退款率超过8%的SKU共 <span class="red">${highRefund.length} 个</span>。</p>
+${highRefund.length > 0 ? `<table><tr><th>SKU</th><th>型号</th><th>加权退款率</th></tr>${highRefund.slice(0,20).map(r=>`<tr><td>${r.sku}</td><td>${r.fm||''}</td><td class="red">${(r.rf/r.rev*100).toFixed(2)}%</td></tr>`).join('')}</table>` : ''}
+
+<h2>五、综合建议</h2>
+<ul>
+<li>DD达成率方面：${lowDD.length>0?lowDD.length+'个SKU达成率低于50%，建议重点分析'+lowDD.slice(0,3).map(d=>d.sku).join('、')+'等型号的市场需求':'所有SKU达成率表现良好'}</li>
+<li>毛利率方面：${lowMargin.length>0?lowMargin.length+'个SKU毛利率为负，建议排查'+lowMargin.slice(0,3).map(d=>d.sku).join('、')+'的推广费用和定价策略':''}</li>
+<li>费率偏差：${Math.abs(prAct-prEst)/totalRev>0.05?'推广费用偏差最大，实际比测算高'+((prAct-prEst)/totalRev*100).toFixed(1)+'个百分点，需重点优化':'各项费率偏差在可控范围内'}</li>
+<li>价格风险：${belowRedline>0?belowRedline+'个型号低于红线价，存在亏损风险，建议尽快提价':'无低于红线价的型号'}</li>
+<li>退款关注：${highRefund.length>0?'需重点关注'+highRefund.slice(0,5).map(r=>r.sku+'('+(r.rf/r.rev*100).toFixed(1)+'%)').join('、')+'等退款率偏高的SKU':''}</li>
+</ul>
+
+<div class="footer">本报告由新品监控看板自动生成 | ${now}</div>
+</body></html>`;
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+// ============================================================
 // ADMIN ROUTES
 // ============================================================
 
