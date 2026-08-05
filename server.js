@@ -13,9 +13,9 @@ initDb();
 // Auto-import built-in template if DB is empty (Render persistence)
 const db = getDb();
 // Safety: clean any garbage-category leftovers
-db.exec(\"DELETE FROM profit_loss WHERE category NOT IN (SELECT name FROM categories)\");
-db.exec(\"DELETE FROM profit_estimation WHERE category NOT IN (SELECT name FROM categories)\");
-db.exec(\"DELETE FROM inventory WHERE category NOT IN (SELECT name FROM categories)\");
+db.exec("DELETE FROM profit_loss WHERE category NOT IN (SELECT name FROM categories)");
+db.exec("DELETE FROM profit_estimation WHERE category NOT IN (SELECT name FROM categories)");
+db.exec("DELETE FROM inventory WHERE category NOT IN (SELECT name FROM categories)");
 const rowCount = db.prepare('SELECT COUNT(*) as c FROM profit_estimation').get().c;
 if (rowCount === 0) {
   const fs = require('fs');
@@ -164,13 +164,14 @@ function getCategory(req) {
 // DASHBOARD API
 // ============================================================
 
-// Helper: get new product period months for a SKU
+// Helper: get new product period months (上架次月/次次月/次次次月)
+// 1月上架 → 新品期为2、3、4月
 function getNewProductMonths(db, sku) {
   const inv = db.prepare('SELECT fba_first_arrival FROM inventory WHERE sku = ?').get(sku);
   if (!inv || !inv.fba_first_arrival) return null;
   const arrival = new Date(inv.fba_first_arrival);
   const months = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 1; i <= 3; i++) { // i=1次月, i=2次次月, i=3次次次月
     const d = new Date(arrival.getFullYear(), arrival.getMonth() + i, 1);
     months.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
