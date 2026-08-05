@@ -865,6 +865,76 @@ app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
 });
 
 // ============================================================
+// TEMPLATE DOWNLOAD
+// ============================================================
+app.get('/api/admin/template', requireAuth, (req, res) => {
+  const XLSX = require('xlsx');
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: 新品利润测算
+  const sheet1Headers = [
+    '商品编码(SKU)', '产品名称', '型号(FRAM组套大厂号)', '批次(第一批/第二批)', '品牌',
+    '测算价(USD)', '红线价(USD)', 'DD值(日均销量预测)',
+    '推广占比(测算)', '退款率(测算)',
+    '材料占比', '税费占比', '头程占比', 'FBA尾程占比', 'FBA仓储占比',
+    '最新采购价含税(RMB)', '不含税采购价(RMB)', '预估头程费用(RMB)', '预估FBA尾程(RMB)',
+    '竞对详情(格式: ASIN:价格/月销/月销售额(卖家), 多个用|分隔)',
+    'FBA首次到货时间(YYYY-MM-DD)'
+  ];
+  const sheet1 = XLSX.utils.aoa_to_sheet([sheet1Headers]);
+  sheet1['!cols'] = sheet1Headers.map((h, i) => ({ wch: i === 1 || i === 19 ? 35 : i === 2 ? 25 : 18 }));
+  XLSX.utils.book_append_sheet(wb, sheet1, '新品利润测算');
+
+  // Sheet 2: 月度损益
+  const sheet2Headers = [
+    '商品编码(SKU)', '月份(YYYYMM)', '销量', '销售额(RMB)',
+    '毛利润(RMB)', '毛利率(小数)',
+    '材料占比', '头程占比', '尾程占比',
+    '退款率', '仓储费占比', '推广占比'
+  ];
+  const sheet2 = XLSX.utils.aoa_to_sheet([sheet2Headers]);
+  sheet2['!cols'] = sheet2Headers.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, sheet2, '月度损益');
+
+  // Sheet 3: 进销存
+  const sheet3Headers = [
+    '商品编码(SKU)', '品牌',
+    'FBA首次到货时间(YYYY-MM-DD)',
+    'FBA可用库存', 'FBA在途库存', '总库存',
+    '7天销量', '14天销量', '30天销量'
+  ];
+  const sheet3 = XLSX.utils.aoa_to_sheet([sheet3Headers]);
+  sheet3['!cols'] = sheet3Headers.map(() => ({ wch: 18 }));
+  XLSX.utils.book_append_sheet(wb, sheet3, '进销存');
+
+  // Sheet 4: 说明
+  const sheet4Data = [
+    ['数据导入模版说明'],
+    [''],
+    ['Sheet 1 - 新品利润测算: 每个SKU一行，包含立项时的测算数据'],
+    ['  • 推广占比(测算): 17.69%（即0.1769），新品立项时假定的推广费率'],
+    ['  • 退款率(测算): 3.36%（即0.0336），新品立项时假定的退款率'],
+    ['  • 竞对详情格式: B0D2HQXTR6:31.91/289/9233(ITESIER_CN)|B0DQ8:29.27/110/3222(SELLER)'],
+    [''],
+    ['Sheet 2 - 月度损益: 每个SKU每月一行'],
+    ['  • 占比字段填小数（如0.256表示25.6%）'],
+    [''],
+    ['Sheet 3 - 进销存: 每个SKU一行'],
+    ['  • FBA首次到货时间决定新品期起算月份'],
+    [''],
+    ['上传规则: 数据追加不覆盖，相同SKU+月份会新增记录']
+  ];
+  const sheet4 = XLSX.utils.aoa_to_sheet(sheet4Data);
+  sheet4['!cols'] = [{ wch: 80 }];
+  XLSX.utils.book_append_sheet(wb, sheet4, '填写说明');
+
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', "attachment; filename*=UTF-8''%E6%96%B0%E5%93%81%E7%9B%91%E6%8E%A7%E6%95%B0%E6%8D%AE%E5%AF%BC%E5%85%A5%E6%A8%A1%E7%89%88.xlsx");
+  res.send(Buffer.from(buf));
+});
+
+// ============================================================
 // CATEGORY ADMIN MANAGEMENT
 // ============================================================
 app.get('/api/admin/category-admins', requireAdmin, (req, res) => {
@@ -931,29 +1001,55 @@ app.post('/api/admin/upload-path', requireAdmin, (req, res) => {
   }
 });
 
-// Reusable Excel import function
+// Reusable Excel import function (supports all 3 types including template format)
 function importExcelData(db, data, file_type, category) {
   let count = 0;
-  const startRow = file_type === 'profit_loss' ? 9 : file_type === 'inventory' ? 6 : 3;
+  // Template format: skip header row (row 0), data from row 1
+  // Legacy format: skip metadata rows
+  const isTemplate = data.length > 0 && Array.isArray(data[0]) && String(data[0][0]).includes('商品编码');
+  const startRow = isTemplate ? 1 : (file_type === 'profit_loss' ? 9 : file_type === 'inventory' ? 6 : 3);
 
   for (let i = startRow; i < data.length; i++) {
     const row = data[i];
-    if (file_type === 'profit_loss') {
-      const sku = (row[2] || '').toString().trim().toUpperCase();
+    if (!row || !Array.isArray(row)) continue;
+
+    if (file_type === 'profit_estimation') {
+      // Template columns (0-indexed):
+      // 0:SKU, 1:产品名称, 2:型号, 3:批次, 4:品牌
+      // 5:测算价, 6:红线价, 7:DD值
+      // 8:推广占比, 9:退款率
+      // 10:材料占比, 11:税费占比, 12:头程占比, 13:FBA尾程占比, 14:FBA仓储占比
+      // 15:采购价含税, 16:不含税采购价, 17:预估头程费用, 18:预估FBA尾程
+      // 19:竞对详情, 20:FBA首次到货时间
+      const sku = String(row[0] || '').trim().toUpperCase();
+      if (!sku) continue;
+      db.prepare(`INSERT INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+        .run(category, row[0]||'', sku, row[1]||'', row[2]||'', row[3]||'', parseFloat(row[5])||null, parseFloat(row[6])||null, parseFloat(row[7])||0, parseFloat(row[10])||null, parseFloat(row[11])||null, parseFloat(row[12])||null, parseFloat(row[13])||null, parseFloat(row[14])||null, parseFloat(row[15])||null, parseFloat(row[16])||null, parseFloat(row[17])||null, parseFloat(row[18])||null, row[19]||'');
+      // Also insert into inventory if FBA arrival date is provided
+      if (row[20]) {
+        const exists = db.prepare('SELECT id FROM inventory WHERE sku=? AND category=?').get(sku, category);
+        if (!exists) {
+          db.prepare(`INSERT INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,0,0,0,0,0,0)`)
+            .run(category, sku, row[4]||'', row[20]);
+        }
+      }
+      count++;
+    } else if (file_type === 'profit_loss') {
+      // Template columns: 0:SKU, 1:月份, 2:销量, 3:销售额, 4:毛利润, 5:毛利率, 6:材料占比, 7:头程占比, 8:尾程占比, 9:退款率, 10:仓储费占比, 11:推广占比
+      const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku || sku === '合计') continue;
-      const month = (row[3] || '').toString().trim();
-      if (month === '合计') continue;
-      const salesVol = parseFloat(row[4]) || 0;
-      const salesRev = parseFloat(row[5]) || 0;
+      const month = String(row[1] || '').trim();
+      if (month === '合计' || !month) continue;
+      const salesVol = parseFloat(row[2]) || 0; const salesRev = parseFloat(row[3]) || 0;
       db.prepare(`INSERT INTO profit_loss (category, sku, month, sales_volume, sales_revenue, gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio, refund_rate, warehouse_ratio, promotion_ratio, unit_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(category, sku, month, salesVol, salesRev, parseFloat(row[6])||0, parseFloat(row[7])||0, parseFloat(row[10])||0, parseFloat(row[11])||0, parseFloat(row[12])||0, parseFloat(row[13])||0, parseFloat(row[14])||0, parseFloat(row[15])||0, salesVol>0?salesRev/salesVol:0);
+        .run(category, sku, month, salesVol, salesRev, parseFloat(row[4])||0, parseFloat(row[5])||0, parseFloat(row[6])||0, parseFloat(row[7])||0, parseFloat(row[8])||0, parseFloat(row[9])||0, parseFloat(row[10])||0, parseFloat(row[11])||0, salesVol>0?salesRev/salesVol:0);
       count++;
     } else if (file_type === 'inventory') {
-      const sku = (row[0] || '').toString().trim().toUpperCase();
+      // Template columns: 0:SKU, 1:品牌, 2:FBA首次到货时间, 3:FBA可用库存, 4:FBA在途库存, 5:总库存, 6:7天销量, 7:14天销量, 8:30天销量
+      const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku || sku === '合计') continue;
-      const serialToDate = (s) => { if(!s||s<=0) return null; const d=new Date((new Date(1899,11,30)).getTime()+s*86400000); return d.toISOString().slice(0,10); };
       db.prepare(`INSERT INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock, fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d) VALUES (?,?,?,?,?,?,?,?,?,?)`)
-        .run(category, sku, row[37]||'', serialToDate(parseFloat(row[40])), parseInt(row[7])||0, parseInt(row[8])||0, parseInt(row[12])||0, parseFloat(row[17])||0, parseFloat(row[18])||0, parseFloat(row[19])||0);
+        .run(category, sku, row[1]||'', row[2]||null, parseInt(row[3])||0, parseInt(row[4])||0, parseInt(row[5])||0, parseFloat(row[6])||0, parseFloat(row[7])||0, parseFloat(row[8])||0);
       count++;
     }
   }
@@ -961,75 +1057,49 @@ function importExcelData(db, data, file_type, category) {
 }
 
 app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: '请选择文件' });
-  }
-
-  const { file_type } = req.body;
-  if (!['profit_estimation', 'profit_loss', 'inventory'].includes(file_type)) {
-    return res.status(400).json({ error: '请选择正确的文件类型' });
-  }
+  if (!req.file) return res.status(400).json({ error: '请选择文件' });
 
   const XLSX = require('xlsx');
   const db = getDb();
+  const category = req.body.category || req.session.currentCategory || '滤清组套';
 
   try {
     const wb = XLSX.readFile(req.file.path);
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(ws);
+    const sheetNames = wb.SheetNames;
+    let totalCount = 0;
+    const logs = [];
 
-    let count = 0;
-    const category = req.body.category || req.session.currentCategory || '滤清组套';
+    // Detect template format: multi-sheet with specific names
+    const isTemplate = sheetNames.includes('新品利润测算') || sheetNames.includes('月度损益') || sheetNames.includes('进销存');
 
-    for (const row of data) {
-      if (file_type === 'profit_loss') {
-        const sku = (row['商品编码'] || row[2] || '').toString().trim().toUpperCase();
-        if (!sku || sku === '合计') continue;
-        const month = (row['月份'] || row[3] || '').toString().trim();
-        if (month === '合计') continue;
-
-        const salesVol = parseFloat(row['销量'] || row[4]) || 0;
-        const salesRev = parseFloat(row['销售额'] || row[5]) || 0;
-        db.prepare(`INSERT INTO profit_loss (category, sku, month, sales_volume, sales_revenue,
-          gross_profit, gross_margin, material_ratio, first_leg_ratio, last_leg_ratio,
-          refund_rate, warehouse_ratio, promotion_ratio, unit_price)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-          category, sku, month, salesVol, salesRev,
-          parseFloat(row['毛利润-实际'] || row[6]) || 0,
-          parseFloat(row['毛利率'] || row[7]) || 0,
-          parseFloat(row['材料占比'] || row[10]) || 0,
-          parseFloat(row['头程占比'] || row[11]) || 0,
-          parseFloat(row['尾程占比'] || row[12]) || 0,
-          parseFloat(row['退款率含vc'] || row[13]) || 0,
-          parseFloat(row['仓储费占比'] || row[14]) || 0,
-          parseFloat(row['推广占比合计（含广告折扣））'] || row[15]) || 0,
-          salesVol > 0 ? salesRev / salesVol : 0
-        );
-        count++;
-      } else if (file_type === 'inventory') {
-        const sku = (row['商品编码'] || row[0] || '').toString().trim().toUpperCase();
-        if (!sku || sku === '合计') continue;
-        db.prepare(`INSERT INTO inventory (category, sku, brand, fba_first_arrival, fba_available_stock,
-          fba_in_transit, total_stock, sales_7d, sales_14d, sales_30d)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-          category, sku,
-          row['品牌'] || row[37] || '',
-          (row['FBA首次到货时间'] || row[40]) ? new Date((row['FBA首次到货时间'] || row[40])).toISOString().slice(0,10) : null,
-          parseInt(row['FBA可用库存'] || row[7]) || 0,
-          parseInt(row['FBA在途库存'] || row[8]) || 0,
-          parseInt(row['总库存'] || row[12]) || 0,
-          parseFloat(row['7天销量'] || row[17]) || 0,
-          parseFloat(row['14天销量'] || row[18]) || 0,
-          parseFloat(row['30天销量'] || row[19]) || 0
-        );
-        count++;
+    if (isTemplate) {
+      // Process template sheets
+      const processSheet = (sheetName, type) => {
+        if (!sheetNames.includes(sheetName)) return 0;
+        const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
+        if (data.length <= 1) return 0;
+        const count = importExcelData(db, data, type, category);
+        logs.push(`${sheetName}: ${count}行`);
+        return count;
+      };
+      totalCount += processSheet('新品利润测算', 'profit_estimation');
+      totalCount += processSheet('月度损益', 'profit_loss');
+      totalCount += processSheet('进销存', 'inventory');
+    } else {
+      // Legacy: single sheet with file_type selector
+      const { file_type } = req.body;
+      if (!file_type || !['profit_estimation', 'profit_loss', 'inventory'].includes(file_type)) {
+        return res.status(400).json({ error: '请选择文件类型，或使用导入模版格式' });
       }
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[sheetNames[0]], { header: 1, defval: '' });
+      totalCount = importExcelData(db, data, file_type, category);
+      logs.push(`${file_type}: ${totalCount}行`);
     }
 
-    db.prepare(`INSERT INTO upload_log (filename, file_type, category, rows_imported, uploaded_by)
-      VALUES (?, ?, ?, ?, ?)`).run(req.file.originalname, file_type, category, count, req.session.user.name);
+    db.prepare(`INSERT INTO upload_log (filename, file_type, category, rows_imported, uploaded_by) VALUES (?, ?, ?, ?, ?)`)
+      .run(req.file.originalname, isTemplate ? '导入模版' : req.body.file_type, category, totalCount, req.session.user.name);
 
-    res.json({ success: true, rows_imported: count });
+    res.json({ success: true, rows_imported: totalCount, detail: logs.join(', ') });
   } catch (e) {
     res.status(500).json({ error: '文件解析失败: ' + e.message });
   }

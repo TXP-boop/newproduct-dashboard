@@ -176,17 +176,14 @@
       <h3>📤 上传文件（数据追加，不覆盖）</h3>
       <p style="color:#666;font-size:13px;margin-bottom:8px">当前品类：<strong id="uploadCategory">滤清组套</strong></p>
       <div class="upload-zone" id="uploadZone">
-        <p>拖拽Excel文件到此处，或点击选择 / 粘贴路径 / 选择文件夹</p>
-        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
-          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
-          <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none" onchange="uploadFolder()">
-          <select id="fileType"><option value="profit_estimation">利润测算表</option><option value="profit_loss">损益分析表</option><option value="inventory">进销存报表</option></select>
-          <button class="btn" onclick="document.getElementById('fileInput').click()">📁 选择文件</button>
-          <button class="btn" onclick="document.getElementById('folderInput').click()">📂 选择文件夹</button>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" id="filePathInput" placeholder="粘贴文件路径（如 D:\数据\损益表.xlsx）" style="flex:1;padding:6px 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px">
-          <button class="btn btn-sm" onclick="uploadByPath()">📋 路径上传</button>
+        <p style="font-size:16px">📤 拖拽Excel文件到此处上传</p>
+        <p style="color:#999;font-size:13px">支持导入模版格式（自动识别3个Sheet），也支持单独上传各类型文件</p>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="uploadFile()">
+        <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none" onchange="uploadFolder()">
+        <div style="display:flex;gap:10px;margin-top:12px">
+          <button class="btn" onclick="document.getElementById('fileInput').click()">📁 上传文件</button>
+          <button class="btn" onclick="document.getElementById('folderInput').click()">📂 上传文件夹</button>
+          <a class="btn btn-outline" href="/api/admin/template" download style="text-decoration:none">📥 下载导入模版</a>
         </div>
       </div>
       <div id="uploadStatus"></div>
