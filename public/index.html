@@ -118,6 +118,11 @@
       </div>
     </div>
     <div id="aiPanel1" class="ai-suggestions"></div>
+    <div class="calc-notes">
+      <h4>📐 计算规则说明</h4>
+      <p><b>DD达成率</b>：每个SKU取新品期（上架次月/次次月/次次次月）最高月销量 ÷ 30 = 实际DD，实际DD ÷ 预测DD × 100% = 逐SKU达成率；汇总时 Σ实际DD ÷ Σ预测DD × 100% = 整体DD达成率</p>
+      <p><b>毛利率</b>：每个SKU取新品期内毛利率最高月份的毛利润和销售额，汇总后 Σ各SKU最高毛利率月毛利润 ÷ Σ各SKU最高毛利率月销售额 × 100%</p>
+    </div>
   </section>
 
   <!-- Panel 2: Fees -->
@@ -132,6 +137,11 @@
       <div class="table-wrap"><table id="feeTable" class="data-table"><thead><tr><th>SKU</th><th>产品名称</th><th>批次</th><th>测算价</th><th>实际售价</th><th>头程(测)</th><th>头程(实)</th><th>头程(实测)</th><th>尾程(测)</th><th>尾程(实)</th><th>尾程(实测)</th><th>仓储(测)</th><th>仓储(实)</th><th>仓储(实测)</th><th>推广(测)</th><th>推广(实)</th><th>推广(实测)</th><th>退款(测)</th><th>退款(实)</th><th>退款(实测)</th></tr></thead><tbody></tbody></table></div>
     </div>
     <div id="aiPanel2" class="ai-suggestions"></div>
+    <div class="calc-notes">
+      <h4>📐 费用（实测）说明</h4>
+      <p><b>实测费率</b> = 实际占比 × (实际售价$ ÷ 测算价$)，目的是消除售价变化对费率占比的影响。当实际售价低于测算价时，费用占销售额的比例会被动放大，实测费率还原了"如果售价不变，费率实际是多少"，便于判断费用本身是否真的超预算。</p>
+      <p><b>示例</b>：头程测算2.54%，实际3.93%（售价从$29.44降至$23.88导致占比虚高），实测3.19%≈测算值，说明头程费用本身并未超预算。</p>
+    </div>
   </section>
 
   <!-- Panel 3: Price -->
