@@ -29,9 +29,9 @@ if (rowCount === 0) {
       wb.SheetNames.forEach(sn => {
         const data = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
         let type;
-        if (sn === '新品利润测算') type = 'profit_estimation';
-        else if (sn === '月度损益') type = 'profit_loss';
-        else if (sn === '进销存') type = 'inventory';
+        if (sn.includes('利润测算')) type = 'profit_estimation';
+        else if (sn.includes('损益')) type = 'profit_loss';
+        else if (sn.includes('进销存')) type = 'inventory';
         else return;
         const count = importExcelData(db, data, type, '滤清组套');
         console.log(`  ${sn}: ${count} rows imported`);
@@ -1095,8 +1095,9 @@ app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) =>
     let totalCount = 0;
     const logs = [];
 
-    // Detect template format: multi-sheet with specific names
-    const isTemplate = sheetNames.includes('新品利润测算') || sheetNames.includes('月度损益') || sheetNames.includes('进销存');
+    // Detect template format: check if any sheet name contains these keywords
+    const hasSheet = (kw) => sheetNames.some(s => s.includes(kw));
+    const isTemplate = hasSheet('利润测算') || hasSheet('损益') || hasSheet('进销存');
 
     if (isTemplate) {
       // Preserve scraped competitor data before clearing
