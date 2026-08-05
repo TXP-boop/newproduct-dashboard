@@ -744,123 +744,157 @@ app.get('/api/dashboard/refunds', requireAuth, (req, res) => {
 app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
   const db = getDb();
   const { panel } = req.params;
+  const category = getCategory(req);
+  const S = (arr) => arr.slice(0, 3).join('、');
 
-  const suggestions = {
-    departments: {
-      product: { label: '📦 产品部门', items: [] },
-      operations: { label: '📊 运营部门', items: [] },
-      engineering: { label: '🔧 工程/供应链', items: [] },
-      aftersales: { label: '🛡 售后/质量', items: [] }
-    }
+  const depts = {
+    product: { label: '📦 产品部门', items: [] },
+    operations: { label: '📊 运营部门', items: [] },
+    engineering: { label: '🔧 工程/供应链', items: [] },
+    aftersales: { label: '🛡 售后/质量', items: [] }
   };
 
   if (panel === 'panel1') {
-    // KPI suggestions
-    const category = getCategory(req);
-    const kpiData = db.prepare(`
-      SELECT pe.sku, pe.dd_value, pe.fram_model, inv.fba_first_arrival
-      FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku = inv.sku AND pe.category = inv.category
-      WHERE inv.fba_first_arrival IS NOT NULL AND pe.category = ?
-    `).all(category);
-
-    // Find low DD achievement SKUs
-    const lowDD = [];
-    for (const s of kpiData.slice(0, 50)) {
-      const npMonths = getNewProductMonths(db, s.sku);
-      if (!npMonths) continue;
-      const ph = npMonths.months.map(() => '?').join(',');
-      const monthly = db.prepare(`SELECT MAX(sales_volume) as max_sales FROM profit_loss WHERE sku=? AND month IN (${ph})`).get(s.sku, ...npMonths.months);
-      const actualDD = (monthly?.max_sales || 0) / 30;
-      const ddRate = s.dd_value > 0 ? actualDD / s.dd_value : 0;
-      if (ddRate < 0.5) lowDD.push({ sku: s.sku, model: s.fram_model, ddRate });
+    // Query actual KPI data
+    const allSkus = db.prepare(`SELECT pe.sku,pe.dd_value,pe.fram_model,pe.product_name,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE inv.fba_first_arrival IS NOT NULL AND pe.category=?`).all(category);
+    const ddResults = []; const marginResults = [];
+    for (const s of allSkus) {
+      const npM = getNewProductMonths(db, s.sku); if (!npM) continue;
+      const ph = npM.months.map(()=>'?').join(',');
+      const mth = db.prepare(`SELECT MAX(sales_volume) as mv, month FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0`).get(s.sku, ...npM.months);
+      const mMargin = db.prepare(`SELECT MAX(gross_margin) as mm FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0`).get(s.sku, ...npM.months);
+      if (mth?.mv) { const ad=(mth.mv/30); const ddPct=s.dd_value>0?ad/s.dd_value:0; ddResults.push({sku:s.sku,model:s.fram_model,ddPct,ad,ed:s.dd_value}); }
+      if (mMargin?.mm != null) marginResults.push({sku:s.sku,model:s.fram_model,margin:mMargin.mm});
     }
+    const lowDD = ddResults.filter(d=>d.ddPct<0.5).sort((a,b)=>a.ddPct-b.ddPct);
+    const highDD = ddResults.filter(d=>d.ddPct>=1.0).length;
+    const negMargin = marginResults.filter(d=>d.margin<0);
+    const totalSKUs = allSkus.length;
 
-    suggestions.departments.product.items = [
-      'DD达成率低于50%的SKU数量较多（如' + lowDD.slice(0,3).map(d=>d.sku).join('、') + '等），建议重新评估这些型号的市场需求，考虑是否降价促销或调整产品定位',
-      '部分SKU毛利率为负（新品期内），建议排查是否因推广费用过高导致，可考虑分阶段控制推广预算',
-      '新品动销率100%表明选品方向正确，但需关注DD值与实际销量的偏差，优化后续新品立项时的DD预测模型'
+    depts.product.items = [
+      `${totalSKUs}个上架SKU中，DD达成率≥100%的有${highDD}个(${(highDD/totalSKUs*100).toFixed(0)}%)，DD达成率<50%的有${lowDD.length}个，如${S(lowDD.map(d=>d.sku))}，建议重新评估低达成率型号的市场需求与定价策略`,
+      `毛利率为负的SKU有${negMargin.length}个(${(negMargin.length/totalSKUs*100).toFixed(0)}%)，如${S(negMargin.map(d=>d.sku))}，建议排查推广费用是否过高或定价偏低`,
+      `整体动销率100%，但DD预测值普遍偏高，建议优化后续新品DD预测模型，参考实际达成数据调整`
     ];
-    suggestions.departments.operations.items = [
-      '针对DD达成率低的SKU，建议增加站内广告投放和促销活动（如Coupon、Lightning Deal），提升曝光和转化',
-      '新品期内毛利率波动大的SKU，建议优化推广节奏：上架首月控制ACOS<30%，后续逐步放宽至盈亏平衡线',
-      '利用Q1/Q2上架数据对比，找出最佳上架时间窗口，指导后续新品发布排期'
+    depts.operations.items = [
+      `DD达成率<50%的${lowDD.length}个SKU建议加大促销力度，如Coupon+Lightning Deal组合，目标30天内将达成率提升至60%以上`,
+      `毛利率为负的SKU建议控制ACOS上限，首月推广占比不超过测算值的1.2倍，待排名稳定后再加大投入`,
+      highDD > totalSKUs*0.3 ? `DD达成率≥100%的SKU占比较高，应保持当前推广力度并适当增加预算抢占市场份额` : `建议分析DD达成率高的SKU特征，复制成功模式到新品`
     ];
-    suggestions.departments.engineering.items = [
-      '对于DD达成率持续偏低的型号，建议与供应商协商降低MOQ或采购价，减少库存压力和成本',
-      '部分型号的采购价含税较高影响毛利率，建议寻找备选供应商或优化包装方案降低材积重',
-      'FBA头程费用占比较高（测算~2.7%，实际~4.8%），建议优化装箱方案，提高集装箱利用率'
-    ];
-    suggestions.departments.aftersales.items = [
-      '关注高退款率型号的产品质量问题，建议对退款率>8%的型号进行退货原因分析',
-      '新品期内出现的负毛利率月份，需排查是否因批量退货/换货导致的费用异常'
+    depts.engineering.items = [
+      `低DD达成率型号如${S(lowDD.slice(0,5).map(d=>d.model))}，建议与供应商协商降低MOQ或最小起订量，减少滞销库存风险`,
+      ddResults.filter(d=>d.ddPct>1.5).length > 0 ? `部分SKU实际销量远超预测(达成率>150%)，建议检查库存水位，确保不断货` : ``,
+      `对比实际头程费用与测算差异，建议评估更经济的海运拼箱方案`
+    ].filter(Boolean);
+    depts.aftersales.items = [
+      `排查${negMargin.length}个负毛利率SKU是否因批量退货导致收入冲减，建议比对退货率数据`,
+      `建议对低DD达成率且高退款率的交叉SKU优先处理，可能存在产品质量影响复购的问题`
     ];
 
   } else if (panel === 'panel2') {
-    suggestions.departments.product.items = [
-      '推广费用实际占比（约18.6%）远超测算假定（17.69%），需在新品立项时更保守地预估推广费率，建议上调至20%',
-      '退款率实际（约4.05%）高于测算假定（3.36%），建议在新品利润测算中将退款率假定上调至4-5%',
-      '尾程费用实际（31.25%）高于测算（28.41%），FBA费率调整是主要原因，需关注亚马逊费率变化并更新测算模型'
-    ];
-    suggestions.departments.operations.items = [
-      '推广费用是费率偏差最大的项目，建议按SKU维度分析哪些广告投放ROI偏低，优化广告结构',
-      '对于推广占比超过25%的SKU，建议立即调整广告策略，降低广泛匹配比例，增加精准长尾词投放',
-      '仓储费用实际与测算基本持平（2.34% vs 2.21%），说明库存周转管理较好，继续保持'
-    ];
-    suggestions.departments.engineering.items = [
-      '头程费用略高（4.77% vs 2.74%测算），建议审查近期海运/空运费率变化，考虑切换更经济的物流方案',
-      '尾程费用上升可能与产品包装尺寸被亚马逊重新测量有关，建议抽查FBA入库后的尺寸数据',
-      '对于材积重偏大的SKU，评估是否可以压缩包装尺寸或改用更轻的包材降低FBA尾程费用'
-    ];
-    suggestions.departments.aftersales.items = [
-      '退款率超预期（4.05% vs 3.36%测算），建议按型号分析退款原因，区分"产品问题"和"买家原因"',
-      '对于退款率>8%的型号，应建立退货产品检查流程，收集退货样本进行质量分析',
-      '建议在listing中完善产品适配信息，减少因"不兼容"导致的退货'
-    ];
+    const feeData = db.prepare(`SELECT pe.sku,pe.est_promotion_rate,pe.est_refund_rate,pe.first_leg_ratio as est_fl,pe.last_leg_ratio as est_ll,pe.warehouse_ratio as est_wh,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE inv.fba_first_arrival IS NOT NULL AND pe.category=?`).all(category);
+    const feeResults = [];
+    for (const s of feeData) {
+      const npM = getNewProductMonths(db, s.sku); if (!npM) continue;
+      const ph = npM.months.map(()=>'?').join(',');
+      const mth = db.prepare(`SELECT * FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0 ORDER BY sales_volume DESC LIMIT 1`).get(s.sku, ...npM.months);
+      if (mth) {
+        const actUSD = (mth.sales_revenue/(mth.sales_volume||1))/6.7; const estP = 1;
+        feeResults.push({
+          sku:s.sku, promo_est:s.est_promotion_rate, promo_act:mth.promotion_ratio, promo_diff:(mth.promotion_ratio||0)-(s.est_promotion_rate||0),
+          refund_est:s.est_refund_rate, refund_act:mth.refund_rate, refund_diff:(mth.refund_rate||0)-(s.est_refund_rate||0),
+          fl_diff:(mth.first_leg_ratio||0)-(s.est_fl||0), ll_diff:(mth.last_leg_ratio||0)-(s.est_ll||0)
+        });
+      }
+    }
+    const promoHigh = feeResults.filter(f=>f.promo_diff>0.1).sort((a,b)=>b.promo_diff-a.promo_diff);
+    const refundHigh = feeResults.filter(f=>f.refund_diff>0.05).sort((a,b)=>b.refund_diff-a.refund_diff);
+    const avgPromoDiff = feeResults.length>0?feeResults.reduce((s,f)=>s+f.promo_diff,0)/feeResults.length:0;
+
+    depts.product.items = [
+      avgPromoDiff > 0 ? `推广实际费率平均比测算高${(avgPromoDiff*100).toFixed(1)}个百分点，建议新品立项时推广费率预估上调至${((feeResults.reduce((s,f)=>s+f.promo_act,0)/(feeResults.length||1))*100).toFixed(1)}%` : '',
+      refundHigh.length > 0 ? `退款率超测算的SKU有${refundHigh.length}个，如${S(refundHigh.map(f=>f.sku))}，建议分析退款原因并更新退款率测算基准` : '',
+      `尾程费率普遍高于测算，建议关注亚马逊FBA费率调整并定期更新测算模型`
+    ].filter(Boolean);
+    depts.operations.items = [
+      promoHigh.length > 0 ? `推广超标的${promoHigh.length}个SKU（如${S(promoHigh.map(f=>f.sku))}偏差>10pp），建议立即优化广告结构` : '',
+      `建议按SKU维度建立推广费用预警线：实际推广占比超过测算值50%时自动预警`,
+      feeResults.filter(f=>Math.abs(f.fl_diff)<0.01).length > feeResults.length*0.5 ? `头程费用偏差较小，说明物流成本控制较好` : `头程费用波动较大，建议检查物流供应商报价`
+    ].filter(Boolean);
+    depts.engineering.items = [
+      `头程费用整体偏差${feeResults.length>0?(feeResults.reduce((s,f)=>s+Math.abs(f.fl_diff),0)/feeResults.length*100).toFixed(1):'--'}个百分点，建议评估不同物流渠道的成本效益`,
+      `部分SKU尾程费用显著偏高，可能与包装尺寸被FBA重新测量有关，建议抽查`
+    ].filter(Boolean);
+    depts.aftersales.items = [
+      refundHigh.length > 0 ? `${refundHigh.length}个SKU退款率超模板预期，建议对退款率前5的SKU进行退货分析，建立改善计划` : '',
+      `退款率>8%的SKU建议在listing增加车型适配验证工具，减少误购退货`
+    ].filter(Boolean);
 
   } else if (panel === 'panel3') {
-    suggestions.departments.product.items = [
-      '实际售价低于红线价的SKU需重点关注，可能面临亏损风险，建议评估是否提价或考虑清仓退出',
-      '实际售价远低于测算价的型号，说明市场竞争激烈，竞对降价幅度较大，需重新评估该型号的竞争力',
-      '竞对价格数据为立项时历史数据，建议定期（每季度）更新竞对信息，确保定价策略与市场同步'
-    ];
-    suggestions.departments.operations.items = [
-      '实际售价低于测算价10%以上的型号，如无法提价，建议通过促销活动提升销量以规模摊薄固定成本',
-      '对于价格优势明显的型号（实际售价低于竞对中位价），可在广告中突出价格优势吸引流量',
-      '建议监控竞对价格变化，当竞对提价时及时跟进，抓住利润窗口期'
-    ];
-    suggestions.departments.engineering.items = [
-      '对实际售价持续低于红线价的型号，建议与供应商谈判降低采购价，或评估是否更换更低成本的原材料',
-      '部分型号竞对价格较低可能因其包装/材质成本更低，建议研究竞对产品实物，寻找降本空间'
-    ];
-    suggestions.departments.aftersales.items = [
-      '低价SKU如果伴随高退款率，可能是产品质量问题导致差评→降价→继续差评的恶性循环，需优先处理',
-      '建议对比竞对listing的评分和差评内容，识别产品改进方向'
-    ];
+    const priceData = db.prepare(`SELECT pe.sku,pe.fram_model,pe.estimated_price,pe.redline_price,pe.competitor_detail,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE inv.fba_first_arrival IS NOT NULL AND pe.category=?`).all(category);
+    const priceResults = [];
+    for (const s of priceData) {
+      const npM = getNewProductMonths(db, s.sku); if (!npM) continue;
+      const ph = npM.months.map(()=>'?').join(',');
+      const mth = db.prepare(`SELECT sales_revenue,sales_volume FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0 ORDER BY sales_volume DESC LIMIT 1`).get(s.sku, ...npM.months);
+      if (mth) {
+        const ap = (mth.sales_revenue/(mth.sales_volume||1))/6.7;
+        const status = s.redline_price && ap < s.redline_price ? 'below_redline' : s.estimated_price && ap < s.estimated_price*0.9 ? 'below_target' : 'normal';
+        priceResults.push({sku:s.sku,model:s.fram_model,est:s.estimated_price,redline:s.redline_price,actual:Math.round(ap*100)/100,status});
+      }
+    }
+    const belowRedline = priceResults.filter(p=>p.status==='below_redline');
+    const belowTarget = priceResults.filter(p=>p.status==='below_target');
+
+    depts.product.items = [
+      belowRedline.length > 0 ? `${belowRedline.length}个SKU实际售价低于红线价(${(belowRedline.length/priceResults.length*100).toFixed(0)}%)，如${S(belowRedline.map(p=>p.sku))}，存在亏损风险，建议评估提价或清仓退出` : '',
+      belowTarget.length > 0 ? `${belowTarget.length}个SKU售价低于测算价10%以上，市场竞争激烈，建议重新评估定价策略` : '',
+      `建议每季度更新竞对价格数据，确保定价策略与市场同步`
+    ].filter(Boolean);
+    depts.operations.items = [
+      belowTarget.length > 0 ? `对售价低于测算价的SKU，建议通过Vine计划获取早期评价提升转化率，以量补价` : '',
+      priceResults.filter(p=>p.status==='normal'&&p.actual>p.est*1.1).length > 0 ? `部分SKU实际售价高于测算价10%以上，利润空间充足，可适当增加广告投入` : '',
+      `对低于红线价的SKU立即暂停大额折扣活动，优先恢复价格至红线以上`
+    ].filter(Boolean);
+    depts.engineering.items = [
+      belowRedline.length > 3 ? `${belowRedline.length}个SKU长期低于红线价，建议与供应商重新谈判采购价` : '',
+      `研究竞对产品包装和材质，寻找在不影响质量前提下的降本机会`
+    ].filter(Boolean);
+    depts.aftersales.items = [
+      `对比低价SKU与高退款率SKU的交叉情况，如两者重叠，优先处理产品质量问题`
+    ].filter(Boolean);
 
   } else if (panel === 'panel4') {
-    suggestions.departments.product.items = [
-      '当前有41个型号退款率超过8%阈值，需要产品部门逐型号排查退款原因并制定改善计划',
-      '同一型号PT/KAX两个品牌退款率差异大的，说明品牌定位或客户群不同，可针对性调整产品策略',
-      '退款率异常高的新品，建议暂停继续备货，待问题解决后再恢复'
-    ];
-    suggestions.departments.operations.items = [
-      '高退款率SKU的广告投放应立即暂停或大幅缩减，避免差评积累导致转化率持续下降',
-      '对于退款率>20%的SKU，建议在listing中增加更详细的产品说明和安装指南，减少误购',
-      '分析退款率与推广占比的相关性：过度推广可能吸引非精准客户，导致退款率上升'
-    ];
-    suggestions.departments.engineering.items = [
-      '对退款率最高的前10个型号（如KX1FCK25700退款率42.75%），建议工程部进行产品实物抽检',
-      '同一型号不同品牌间退款率差异显著的，建议对比两个品牌的供应商/生产工艺差异',
-      'FRAM组套大厂号相同的产品，如只有某一品牌退款高，可能是供应商端问题，需与供应商沟通'
-    ];
-    suggestions.departments.aftersales.items = [
-      '退款率>20%的型号建议建立专项售后跟踪机制，每笔退款均需记录原因并汇总分析',
-      '退货产品应100%进行外观和功能检查，区分"产品缺陷"和"客户误购"，并拍照存档',
-      '针对高频退款原因（如"不兼容"、"质量差"），建议更新产品描述和A+页面，增加适配车型验证工具'
-    ];
+    const refData = db.prepare(`SELECT pl.sku,pl.month,pl.sales_revenue,pl.refund_rate,pe.fram_model,pe.product_name FROM profit_loss pl LEFT JOIN profit_estimation pe ON pl.sku=pe.sku AND pl.category=pe.category WHERE pl.month>='202605' AND pl.month<='202608' AND pl.category=?`).all(category);
+    const skuRef = {};
+    refData.forEach(r => {
+      if (!skuRef[r.sku]) skuRef[r.sku] = {sku:r.sku,model:r.fram_model,name:r.product_name,total:0,refund:0};
+      skuRef[r.sku].total += (r.sales_revenue||0); skuRef[r.sku].refund += (r.refund_rate||0)*(r.sales_revenue||0);
+    });
+    const highRef = Object.values(skuRef).filter(s=>s.total>0&&s.refund/s.total>0.08).sort((a,b)=>b.refund/b.total-a.refund/a.total);
+    const vHigh = highRef.filter(s=>s.refund/s.total>0.2);
+    const modelGroups = {}; highRef.forEach(s=>{const m=s.model||s.sku;if(!modelGroups[m])modelGroups[m]=[];modelGroups[m].push(s);});
+
+    depts.product.items = [
+      highRef.length > 0 ? `${highRef.length}个型号退款率超8%，${vHigh.length}个超20%（如${S(vHigh.map(s=>s.sku))}），建议产品部门逐型号排查` : '',
+      `同一型号多SKU退款率差异>10pp的，建议对比品牌定位和客户群差异，针对性调整`
+    ].filter(Boolean);
+    depts.operations.items = [
+      vHigh.length > 0 ? `退款率>20%的${vHigh.length}个SKU建议立即暂停广告投放，避免差评扩散` : '',
+      highRef.length > 0 ? `对于退款率8%-20%的SKU，建议在listing增加详细安装说明和车型适配表` : '',
+      `分析退款率与推广占比的相关性，控制非精准流量的广告支出`
+    ].filter(Boolean);
+    depts.engineering.items = [
+      vHigh.length > 0 ? `退款率前5型号（${S(vHigh.slice(0,5).map(s=>s.sku))}）建议工程部立即进行产品实物抽检` : '',
+      Object.keys(modelGroups).filter(m=>modelGroups[m].length>1&&Math.abs((modelGroups[m][0].refund/modelGroups[m][0].total)-(modelGroups[m][1]?.refund/modelGroups[m][1]?.total||0))>0.1).length > 0 ? `同型号不同品牌退款率差异显著的，建议对比供应商/生产工艺差异` : ''
+    ].filter(Boolean);
+    depts.aftersales.items = [
+      vHigh.length > 0 ? `建议对退款率>20%的SKU建立售后专项跟踪，每笔退款记录原因并汇总` : '',
+      highRef.length > 0 ? `对高频退款原因（不兼容、质量差），建议更新A+页面，增加车型验证工具` : ''
+    ].filter(Boolean);
   }
 
-  res.json(suggestions);
+  res.json({ departments: depts });
 });
 
 // ============================================================
