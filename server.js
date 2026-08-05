@@ -63,6 +63,20 @@ if (rowCount === 0) {
       console.log('Auto-import error:', e.message);
     }
   }
+
+  // Restore scraped competitor data from backup
+  const scrapedBackup = require('path').join(__dirname, 'scraped_backup.json');
+  if (fs.existsSync(scrapedBackup)) {
+    try {
+      const backup = JSON.parse(fs.readFileSync(scrapedBackup, 'utf8'));
+      let restored = 0;
+      for (const s of backup) {
+        const r = db.prepare("UPDATE profit_estimation SET competitor_detail = ? WHERE sku = ? AND competitor_detail NOT LIKE '%[$%'").run(s.competitor_detail, s.sku);
+        restored += r.changes;
+      }
+      if (restored > 0) console.log('Restored scraped data for ' + restored + ' SKUs');
+    } catch(e) {}
+  }
 }
 
 // Middleware
@@ -1141,7 +1155,7 @@ app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) =>
 
     if (isTemplate) {
       // Preserve scraped competitor data before clearing
-      const scrapedData = db.prepare('SELECT sku, competitor_detail FROM profit_estimation WHERE category = ? AND competitor_detail LIKE ?').all(category, '%[↑%');
+      const scrapedData = db.prepare("SELECT sku, competitor_detail FROM profit_estimation WHERE competitor_detail LIKE '%[$%' OR competitor_detail LIKE '%[↑%' OR competitor_detail LIKE '%[↓%' OR competitor_detail LIKE '%[原:%'").all();
       // Clear existing data then import fresh
       db.exec('DELETE FROM profit_estimation');
       db.exec('DELETE FROM profit_loss');
@@ -1160,7 +1174,12 @@ app.post('/api/admin/upload', requireAdmin, upload.single('file'), (req, res) =>
       totalCount += processSheet('进销存', 'inventory');
       // Restore scraped competitor data
       for (const s of scrapedData) {
-        db.prepare('UPDATE profit_estimation SET competitor_detail = ? WHERE sku = ? AND category = ?').run(s.competitor_detail, s.sku, category);
+        db.prepare('UPDATE profit_estimation SET competitor_detail = ? WHERE sku = ?').run(s.competitor_detail, s.sku);
+      }
+      // Also save to disk for Render persistence
+      if (scrapedData.length > 0) {
+        const fs = require('fs');
+        fs.writeFileSync(path.join(__dirname, 'scraped_backup.json'), JSON.stringify(scrapedData));
       }
     } else {
       // Legacy: single sheet, try to detect type from sheet name
