@@ -176,9 +176,10 @@ function filterByLaunchMonth(items, monthsParam, skuField) {
   const monthSet = new Set(monthsParam.split(',').map(m => parseInt(m.trim())));
   const db = getDb();
   return items.filter(item => {
-    let sku = typeof item === 'string' ? item : (item[skuField || 'sku'] || item.sku);
-    // For model objects with comma-separated skus, take first SKU
-    if (!sku && item.skus && typeof item.skus === 'string') sku = item.skus.split(',')[0].trim();
+    // Try to get SKU: from comma-separated skus field first, then from sku field
+    let sku = null;
+    if (item.skus && typeof item.skus === 'string') sku = item.skus.split(',')[0].trim();
+    if (!sku) sku = typeof item === 'string' ? item : (item[skuField || 'sku'] || item.sku);
     if (!sku) return false;
     const inv = db.prepare('SELECT fba_first_arrival FROM inventory WHERE sku = ?').get(sku);
     if (!inv || !inv.fba_first_arrival) return false;
@@ -726,12 +727,13 @@ function processPriceResults(models, db, res) {
   res.json({ details: results });
 }
 
-// Panel 4: High Refund Warning (按型号聚合)
+// Panel 4: High Refund Warning (按型号聚合, 支持月份筛选)
 app.get('/api/dashboard/refunds', requireAuth, (req, res) => {
   const db = getDb();
   const category = getCategory(req);
+  const { months } = req.query;
 
-  const refundData = db.prepare(`
+  let refundData = db.prepare(`
     SELECT pl.sku, pl.month,
            SUM(pl.sales_volume) as sales_volume, SUM(pl.sales_revenue) as sales_revenue,
            AVG(pl.refund_rate) as refund_rate, AVG(pl.promotion_ratio) as promotion_ratio,
@@ -742,6 +744,9 @@ app.get('/api/dashboard/refunds', requireAuth, (req, res) => {
     GROUP BY pl.sku, pl.month
     ORDER BY pl.sku, pl.month DESC
   `).all(category);
+
+  // Filter by launch month if specified
+  if (months) refundData = filterByLaunchMonth(refundData, months, 'sku');
 
   // Group by SKU first, compute weighted refund rate
   const skuRefundMap = {};
