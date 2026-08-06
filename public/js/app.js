@@ -210,8 +210,7 @@ async function loadPanel1() {
     // Destroy existing charts before redrawing
     Object.values(charts).forEach(c => c.destroy());
     charts = {};
-    let extra = currentMonthFilter ? 'months=' + currentMonthFilter : '';
-    const resp = await fetch(apiUrl('/api/dashboard/kpi', extra));
+    const resp = await fetch(apiUrl('/api/dashboard/kpi'));
     const data = await resp.json();
 
     document.getElementById('kpi-activation').textContent = data.summary.sales_activation_rate + '%';
