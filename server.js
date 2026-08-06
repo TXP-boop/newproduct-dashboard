@@ -846,7 +846,18 @@ app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
   const db = getDb();
   const { panel } = req.params;
   const category = getCategory(req);
+  const { months } = req.query;
+  const monthSet = months ? new Set(months.split(',').map(m => parseInt(m.trim()))) : null;
   const S = (arr) => arr.slice(0, 3).join('、');
+
+  // Helper: filter SKU data by launch month
+  const filterMonth = (arr) => {
+    if (!monthSet) return arr;
+    return arr.filter(s => {
+      if (!s.fba_first_arrival) return false;
+      return monthSet.has(new Date(s.fba_first_arrival).getMonth() + 1);
+    });
+  };
 
   const depts = {
     product: { label: '📦 产品部门', items: [] },
@@ -857,7 +868,8 @@ app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
 
   if (panel === 'panel1') {
     // Query actual KPI data
-    const allSkus = db.prepare(`SELECT pe.sku,pe.dd_value,pe.fram_model,pe.product_name,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE inv.fba_first_arrival IS NOT NULL AND pe.category=?`).all(category);
+    let allSkus = db.prepare(`SELECT pe.sku,pe.dd_value,pe.fram_model,pe.product_name,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE inv.fba_first_arrival IS NOT NULL AND pe.category=?`).all(category);
+    allSkus = filterMonth(allSkus);
     const ddResults = []; const marginResults = [];
     for (const s of allSkus) {
       const npM = getNewProductMonths(db, s.sku); if (!npM) continue;
@@ -893,7 +905,8 @@ app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
     ];
 
   } else if (panel === 'panel2') {
-    const feeData = db.prepare(`SELECT pe.sku,pe.est_promotion_rate,pe.est_refund_rate,pe.first_leg_ratio as est_fl,pe.last_leg_ratio as est_ll,pe.warehouse_ratio as est_wh,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE inv.fba_first_arrival IS NOT NULL AND pe.category=?`).all(category);
+    let feeData = db.prepare(`SELECT pe.sku,pe.est_promotion_rate,pe.est_refund_rate,pe.first_leg_ratio as est_fl,pe.last_leg_ratio as est_ll,pe.warehouse_ratio as est_wh,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE inv.fba_first_arrival IS NOT NULL AND pe.category=?`).all(category);
+    feeData = filterMonth(feeData);
     const feeResults = [];
     for (const s of feeData) {
       const npM = getNewProductMonths(db, s.sku); if (!npM) continue;
@@ -932,7 +945,8 @@ app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
     ].filter(Boolean);
 
   } else if (panel === 'panel3') {
-    const priceData = db.prepare(`SELECT pe.sku,pe.fram_model,pe.estimated_price,pe.redline_price,pe.competitor_detail,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE inv.fba_first_arrival IS NOT NULL AND pe.category=?`).all(category);
+    let priceData = db.prepare(`SELECT pe.sku,pe.fram_model,pe.estimated_price,pe.redline_price,pe.competitor_detail,inv.fba_first_arrival FROM profit_estimation pe LEFT JOIN inventory inv ON pe.sku=inv.sku AND pe.category=inv.category WHERE inv.fba_first_arrival IS NOT NULL AND pe.category=?`).all(category);
+    priceData = filterMonth(priceData);
     const priceResults = [];
     for (const s of priceData) {
       const npM = getNewProductMonths(db, s.sku); if (!npM) continue;
