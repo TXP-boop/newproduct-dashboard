@@ -1,0 +1,216 @@
+Scraping 189 ASINs from Amazon...
+
+1/189 B0D2HQXTR6: $29.86 BSR#7333 ~126/mo ITESIER Engine &amp; Cabin Air Filter Ki
+2/189 B0DQ8Y7G8W: $27.79 BSR#109843 ~2/mo SERVKITOUR Cabin Engine Air Filter Set f
+3/189 B0CTBH7GBM: $27.53 BSR#33078 ~14/mo Engine Cabin Air Filter Kit for Palisade
+4/189 B0DNN3JLR4: $19.99 BSR#421914 ~4/mo Engine Cabin Air Filters Compatible with
+5/189 B0D791SBYS: $22.99 BSR#271 ~1335/mo Cabin &amp; Engine Air Filter Combo for 
+6/189 B0DZY385G8: $27.86 BSR#3662 ~264/mo ITESIER Engine Cabin Air Filter Kit for 
+7/189 B0DK4N29C2: $26.99 BSR#37 ~2669/mo Engine+Cabin Air Filter Fit for 2016-202
+8/189 B0DGCY5VDN: $27.86 BSR#39590 ~13/mo ITESIER Engine Cabin Air Filter Kit for 
+9/189 B0FGXFL5Q1: $21.99 BSR#21166 ~23/mo 17220-6MA-J01 Engine Air Filter and 8029
+10/189 B0FF2JQ94T: $10.99 BSR#1460593 ~2/mo Engine and Cabin Air Filter Set Compatib
+11/189 B0F2B1L2X5: $27.98 BSR#10831 ~56/mo (Hybrid Only) Engine Cabin Air Filter Ki
+12/189 B0DSPPZNF1: $18.45 BSR#11403 ~32/mo Capume 2PCS Cabin Engine Air Filter Kit 
+13/189 B0FD8J7D7G: $26.86 BSR#27870 ~17/mo ITESIER (2.5L HYBRID) Cabin Engine Air F
+14/189 B0CM2WBYJQ: $26.99 BSR#9203 ~79/mo Engine &amp; Cabin Air Filter Fits ES300
+15/189 B0DL6GFF6Z: $27.68 BSR#25951 ~10/mo ITESIER Cabin &amp; Engine Air Filter fo
+16/189 B0D791QMJK: $25.99 BSR#271 ~1985/mo Cabin &amp; Engine Air Filter Kit for To
+17/189 B0DZH9K8TK: $26.58 BSR#68360 ~10/mo Car Engine and Cabin Air Filter Combo fo
+18/189 B0F2TFJDSG: $21.99 BSR#1573039 ~2/mo Dacall Engine &amp; Cabin Air Filter Set
+19/189 B0DZH643NQ: $27.98 BSR#68685 ~10/mo Engine &amp; Cabin Air Filter Replacemen
+20/189 B0DVZR8HWW: $28.89 BSR#11638 ~45/mo ITESIER Cabin Engine Air Filter kit for 
+21/189 B0D8KBWMVM: $27.98 BSR#46554 ~15/mo Engine Cabin Air Filter Kit for Odyssey 
+22/189 B0F8NHW1P8: $22.99 BSR#20819 ~12/mo 17220-5J6-A10 Engine Air Filter and 8029
+23/189 B0DPSZWNZC: $19.99 BSR#913787 ~3/mo Engine Cabin Air Filters Compatible with
+24/189 B0DQSKLN8Q: $28.68 BSR#19476 ~33/mo ITESIER Engine &amp; Cabin Air Filter fo
+25/189 B0DKFFPMBD: $22.94 BSR#1179 ~399/mo Cabin and Engine Air Filter Fits for 201
+
+--- 25/189 done (25ok/0fail) 142s elapsed ---
+
+26/189 B0F1C1639J: $17.99 BSR#133539 ~1/mo FLTRUCKTOP A3244C CP966 Engine Cabin Air
+27/189 B0DXZPF5DT: $22.39 BSR#3338 ~180/mo Cabin and Engine Air Filter Fits for San
+28/189 B0D9NV52HP: $28.98 BSR#8327 ~138/mo (Hybrid Only) Engine &amp; Cabin Air Fil
+29/189 B0DXZXFX6B: $22.09 BSR#5843 ~74/mo JOJOMARK Cabin and Engine Air Filter Set
+30/189 B0D2NDN49Q: $24.99 BSR#271 ~1656/mo Cabin &amp; Engine Air Filter Combo for 
+31/189 B0DHKC264G: $24.99 BSR#37 ~3076/mo Engine+Cabin Air Filter Fit for 20-25 So
+32/189 B0DY7LH5G1: $22.94 BSR#1179 ~385/mo Cabin and Engine Air Filter Fits for Tra
+33/189 B0DXJYTGKG: $24.99 BSR#167 ~1210/mo Cabin &amp; Engine Air Filter Combo for 
+34/189 B0F4K9GZ7K: $28.98 BSR#25574 ~30/mo SERVKITOUR Cabin Engine Air Filter Set f
+35/189 B0DC6MJ3SP: $27.99 BSR#37 ~3371/mo RVgolf Engine+Cabin Air Filter Fit for 2
+36/189 B0C4F3BG68: $25.99 BSR#167 ~1976/mo Cabin &amp; Engine Air Filter Kit for Su
+37/189 B0DJNLJ4YT: $24.99 BSR#645 ~668/mo Cabin &amp; Engine Air Filter Kit for Ch
+38/189 B0D3P8WVKG: $24.69 BSR#167 ~1421/mo Cabin &amp; Engine Air Filter Kit for 19
+39/189 B0D9BLXYPJ: $26.99 BSR#645 ~913/mo Cabin &amp; Engine Air Filter Kit for 20
+40/189 B0DJCSF4C2: $27.86 BSR#16853 ~41/mo ITESIER Engine Cabin Air Filter Kit for 
+41/189 B0DH2PBBT9: $26.86 BSR#22303 ~29/mo ITESIER Cabin Engine Air Filter Kit for 
+42/189 B0F47TPCR7: $25.98 BSR#30603 ~12/mo Cabin &amp; Engine Air Filter Kit for Ex
+43/189 B0DK4NPJGF: $26.99 BSR#37 ~2687/mo Engine+Cabin Air Filter Fit for 2011-201
+44/189 B0DHG31P29: $26.99 BSR#167 ~1847/mo Cabin &amp; Engine Air Filter for Ford E
+45/189 B0DJQVHWFT: $26.99 BSR#37 ~3251/mo Engine+Cabin Air Filters Set Fit for 201
+46/189 B0D8Q11LVP: $25.99 BSR#645 ~768/mo Cabin &amp; Engine Air Filter Kit for Ch
+47/189 B0F5HLNBLM: $19.99 BSR#42227 ~11/mo Dacall Activated Carbon Cabin &amp; Engi
+48/189 B0FF9BHSNK: $26.88 BSR#1242 ~572/mo Engine &amp; Cabin Air Filter Combo for 
+49/189 B0CL7TVLSQ: $21.99 BSR#6633 ~114/mo Cabin &amp; Engine Air Filter for Integr
+50/189 B0DJNSNM95: $26.99 BSR#167 ~1244/mo Cabin &amp; Engine Air Filter Kit for On
+
+--- 50/189 done (50ok/0fail) 285s elapsed ---
+
+51/189 B0DHGFLNGB: $26.99 BSR#645 ~923/mo Cabin &amp; Engine Air Filter for (All N
+52/189 B0F9DYS1JH: $19.99 BSR#929119 ~4/mo Engine Cabin Air Filters Compatible with
+53/189 B0DHV86KTJ: $25.99 BSR#37 ~2829/mo Engine+Cabin Air Filter Fit 22-26 Civic,
+54/189 B0FBGMFKHM: $28.86 BSR#31187 ~22/mo ITESIER Cabin Engine Air Filter kit for 
+55/189 B0DHV72D36: $26.99 BSR#37 ~3323/mo Engine+Cabin Air Filter Fit for 2011-202
+56/189 B0DY7PHHCG: $22.94 BSR#1179 ~426/mo Cabin and Engine Air Filter Fits for 202
+57/189 B0F9L3RFL5: $27.99 BSR#20500 ~20/mo JOJOMARK Cabin and Engine Air Filter Set
+58/189 B0DK4NKYXG: $25.99 BSR#37 ~3435/mo Engine+Cabin Air Filter Fit for 2018-202
+59/189 B0F5HP9MYK: $24.99 BSR#260368 ~3/mo Dacall Activated Carbon Cabin &amp; Engi
+60/189 B0DBSKML3C: $25.99 BSR#167 ~1410/mo Forccord Cabin &amp; Engine Air Filter F
+61/189 B0F2H87FH3: $19.99 BSR#34244 ~13/mo Femota Cabin &amp; Engine Air Filter Kit
+62/189 B0BLH2RY9F: $17.99 BSR#786834 ~2/mo FilterDoctor Cabin &amp; Engine Air Filt
+63/189 B0D31RCP8W: $19.99 BSR#47271 ~12/mo BDFHYK CA10755 Engine Air Filter and CF1
+64/189 B0CMQJHT76: $20.55 BSR#79357 ~10/mo RRITESS CA9360 EAir Filter CF10132 Cabin
+65/189 B0DZGFKS1L: $19.99 BSR#942284 ~3/mo FLTRUCKTOP CA10755 CF10285 Engine and Ca
+66/189 B0D8JLT2YP: $27.53 BSR#20721 ~13/mo Cabin Engine Air Filter Kit for Ford F15
+67/189 B0DHR97N1B: $28.98 BSR#25733 ~16/mo OIFILLIO Engine &amp; Cabin Air Filter K
+68/189 B0DK4MPGLG: $26.99 BSR#37 ~3340/mo Engine+Cabin Air Filter Fit for 2018-202
+69/189 B0DNTDYMKB: $25.99 BSR#43402 ~13/mo FA1883 Ford Engine and Cabin Air Filter 
+70/189 B0DJX46SFN: $26.58 BSR#95083 ~10/mo Engine &amp; Cabin Air Filter Replacemen
+71/189 B0FCQTNRBH: $23.99 BSR#225606 ~3/mo Dacall Activated Carbon Cabin &amp; Engi
+72/189 B0D79649DR: $24.69 BSR#271 ~1677/mo Cabin &amp; Engine Air Filter Combo for 
+73/189 B0DJQW2GQH: $24.99 BSR#37 ~2584/mo Engine+Cabin Air Filter Fit for 2021-202
+74/189 B0DHGB7S1D: $24.99 BSR#167 ~1238/mo Cabin &amp; Engine Air Filter Kit for Ho
+75/189 B0DHV7GK2S: $24.99 BSR#37 ~3188/mo Engine+Cabin Air Filter Fit for 2012-201
+
+--- 75/189 done (75ok/0fail) 429s elapsed ---
+
+76/189 B0D2DWTW4X: $29.89 BSR#40703 ~23/mo ITESIER Cabin Engine Air Filter kit for 
+77/189 B0F2J215BP: $28.96 BSR#46580 ~25/mo SERVKITOUR Engine Cabin Air Filter for T
+78/189 B0DKTRR4RC: $28.86 BSR#14309 ~33/mo ITESIER Engine Cabin Air Filter kit for 
+79/189 B0D2NHQHYF: $23.69 BSR#167 ~1305/mo Cabin &amp; Engine Air Filter Kit for To
+80/189 B0FHPGRDQY: $24.99 BSR#37 ~2809/mo Engine+Cabin Air Filter Fit for 2014-202
+81/189 B0DZH9FG2H: $27.99 BSR#81655 ~3/mo Cabin and Engine Air Filter Combo for To
+82/189 B0DWKJXXJJ: $25.39 BSR#54374 ~4/mo Engine Cabin Air Filter Kit for Rogue (2
+83/189 B0DT5YLNPN: $24.98 BSR#204466 ~1/mo Dacall Engine &amp; Cabin Air Filter Set
+84/189 B0DL5MYYJ7: $25.99 BSR#40 ~3177/mo Engine+Cabin Air Filter Fit for 2014-202
+85/189 B0DT3KNJKT: $22.99 BSR#171 ~1943/mo Cabin &amp; Engine Air Filter Kit for Ni
+86/189 B0F7QCVHDZ: $21.29 BSR#1002945 ~2/mo Cabin Engine Air Filter Kit Fits 2017-20
+87/189 B0FD9Q3434: $26.89 BSR#53281 ~9/mo SCREW RHINO Engine Air Filter&amp;Cabin 
+88/189 B0D8SQF6J9: $28.99 BSR#167 ~1985/mo Cabin &amp; Engine Air Filter Kit for Vo
+89/189 B0D9XY3CRZ: $26.99 BSR#167 ~1126/mo Cabin &amp; Engine Air Filter for 13-17 
+90/189 B0FJDG1FRH: $25.99 BSR#40 ~3333/mo Engine+Cabin Air Filter Fit for 2021-202
+91/189 B0D9BLFKYK: $26.99 BSR#171 ~1152/mo Cabin &amp; Engine Air Filter for Chrysl
+92/189 B0D8Q4BZ71: $26.99 BSR#167 ~1660/mo Cabin &amp; Engine Air Filter Kit for Tr
+93/189 B0DXK35169: $22.88 BSR#167 ~1800/mo Cabin &amp; Engine Air Filter Kit for Vo
+94/189 B0DKF1HP9P: $28.47 BSR#15595 ~47/mo Engine Cabin Air Filter Kit for Silverad
+95/189 B0DYRZV7D2: $28.68 BSR#18957 ~36/mo ITESIER Engine &amp; Cabin Air Filter fo
+96/189 B0DRY6MKDL: $26.99 BSR#167 ~1084/mo Cabin &amp; Engine Air Filter Kit for Ch
+97/189 B0DJQVNGXQ: $26.99 BSR#37 ~2610/mo Engine+Cabin Air Filter Fit for 14-18 Si
+98/189 B0CL7B5F2F: $23.98 BSR#27342 ~12/mo J1YL2C Engine &amp; Cabin Air Filter for
+99/189 B0DZ2B52HF: $27.75 BSR#25265 ~12/mo SERVKITOUR Engine cabin Air Filter Set f
+100/189 B0DYV5RCMT: $26.58 BSR#26246 ~18/mo Cabin Engine Air Filter Kit for CX-5 (20
+
+--- 100/189 done (100ok/0fail) 571s elapsed ---
+
+101/189 B0DMSSSJ5W: $26.59 BSR#34198 ~26/mo Cabin &amp; Engine Air Filter Replacemen
+102/189 B0DRSFV42B: $19.99 BSR#394551 ~2/mo PE07-13-3A0A KD45-61-J6X Engine &amp; Ca
+103/189 B0F195W45Q: $28.79 BSR#11747 ~31/mo SERVKITOUR Cabin Engine Air Filter for 2
+104/189 B0F1G7DVDC: $27.98 BSR#33231 ~17/mo Engine &amp; Cabin Air Filter Kit for Cr
+105/189 B0DZH8H1MQ: $24.98 BSR#206244 ~3/mo Dacall Engine &amp; Cabin Air Filter Set
+106/189 B0CL7RZM4L: $19.99 BSR#30927 ~20/mo J1YL2C Engine &amp; Cabin Air Filter for
+107/189 B0FG3GRM7Y: $24.97 BSR#7825 ~88/mo Engine &amp; Cabin Air Filter Kit for CR
+108/189 B0FLBXKS9W: $27.79 BSR#25257 ~17/mo SERVKITOUR (2.4L Gas) Engine Cabin Air F
+109/189 B0DXZ1XH1M: $26.98 BSR#27641 ~29/mo Capume 2PCS Cabin Engine Air Filter Kits
+110/189 B0F283GFSM: $28.89 BSR#8583 ~108/mo ITESIER Engine Cabin Air Filter Kit for 
+111/189 B0DYH3G5NN: $28.79 BSR#19978 ~47/mo SERVKITOUR Engine Cabin Air Filter Set f
+112/189 B0CP7D2PFS: $29.87 BSR#311281 ~4/mo Engine &amp; Cabin Air Filter Compatible
+113/189 B0DMSMQF8L: $27.98 BSR#252834 ~2/mo Dacall Engine &amp; Cabin Air Filter Set
+114/189 B0DMRBGVZS: $27.99 BSR#645 ~632/mo Cabin &amp; Engine Air Filter Kit for 20
+115/189 B0F2FK14N4: $29.89 BSR#18347 ~53/mo SERVKITOUR Cabin Engine Air Filter Set f
+116/189 B0FGDTHLGH: $28.98 BSR#101618 ~3/mo Engine Cabin Air Filter Kit for 4Runner 
+117/189 B0DSW8HRG1: $19.99 BSR#40714 ~29/mo 17801-38051 Engine &amp; Cabin Air Filte
+118/189 B0F2FRSHGR: $27.99 BSR#13213 ~58/mo SERVKITOUR Cabin Engine Air Filter Set f
+119/189 B0D9QT1MMS: FAILED - undefined
+120/189 B0FGWHBTGB: FAILED - undefined
+121/189 B0D1K661CK: FAILED - undefined
+122/189 B0DXF1NP3V: FAILED - undefined
+123/189 B0FJRL5QHP: FAILED - undefined
+124/189 B0DDHNBLJL: FAILED - undefined
+125/189 B0DHFTKPR3: FAILED - undefined
+
+--- 125/189 done (118ok/7fail) 687s elapsed ---
+
+126/189 B0DHGBHBCH: FAILED - undefined
+127/189 B0D6VB1KVM: FAILED - undefined
+128/189 B0DGLLDF9X: $18.93 BSR#57870 ~8/mo GoaMotors Engine Air Filter and Cabin Ai
+129/189 B0DZB9R5YQ: FAILED - undefined
+130/189 B0F2T7YVB9: FAILED - undefined
+131/189 B0F43BBFSG: FAILED - undefined
+132/189 B0F134WKDF: FAILED - undefined
+133/189 B0FJM4PJJH: FAILED - undefined
+134/189 B0FG2XNXCH: FAILED - undefined
+135/189 B0DPJXPSDT: FAILED - undefined
+136/189 B0FK5KMDHQ: FAILED - undefined
+137/189 B0DZH7F4MC: FAILED - undefined
+138/189 B0FSCFY2HV: FAILED - undefined
+139/189 B0DZY3H4FR: FAILED - undefined
+140/189 B0FKYCPBM1: $23.99 ~?/mo Air Filter Kit Fit for 2020-2022 Honda C
+141/189 B0FCYTCYTG: FAILED - undefined
+142/189 B0FJMBJCYK: $26.99 ~?/mo 3.5L GAS ONLY Dacall Air Filter Set fit 
+143/189 B0F1XPX2XL: FAILED - undefined
+144/189 B0FKB5HPH7: FAILED - undefined
+145/189 B0DT5YCDCJ: $37.99 ~?/mo Cabin &amp; Engine Air Filter Set for Fr
+146/189 B0F5LXXFFW: FAILED - undefined
+147/189 B0DC61X555: $34.98 ~?/mo OIFILLIO Engine Cabin Air Filter Kit for
+148/189 B0DK9612T5: FAILED - undefined
+149/189 B0FJ21HLFK: FAILED - undefined
+150/189 B0C7H8QDDM: $26.89 ~?/mo A-Premium 2-Pack Engine &amp; Cabin Air 
+
+--- 150/189 done (124ok/26fail) 759s elapsed ---
+
+151/189 B0FM3XSLYC: FAILED - undefined
+152/189 B0FM6SLC7Q: $24.69 ~?/mo CA10677 Engine Air Filter &amp; 90915-YZ
+153/189 B0FJDK4XBG: FAILED - undefined
+154/189 B0F1F84935: FAILED - undefined
+155/189 B0FPLHTQTM: $26.99 ~?/mo RVgolf Engine+Cabin Air Filter Fit for 2
+156/189 B0DMSSVCJ8: FAILED - undefined
+157/189 B0CSK9YQFF: FAILED - undefined
+158/189 B0CZ4DM7XY: FAILED - undefined
+159/189 B0F29LPT86: $26.99 ~?/mo Cabin &amp; Engine Air Filter Kit for Fo
+160/189 B0FHD3DPTQ: FAILED - undefined
+161/189 B0DT39PNL9: FAILED - undefined
+162/189 B0FKM2BGJS: FAILED - undefined
+163/189 B0DG5RN4N5: FAILED - undefined
+164/189 B0DHP85G7K: FAILED - undefined
+165/189 B0DT5Y5V3F: FAILED - undefined
+166/189 B0DXVC8LYV: FAILED - undefined
+167/189 B0F37SRBVG: FAILED - undefined
+168/189 B0F9YZZJB5: FAILED - undefined
+169/189 B0DSZMPSPH: FAILED - undefined
+170/189 B0FJM63PMH: FAILED - undefined
+171/189 B0FKB326T8: FAILED - undefined
+172/189 B0F6NH15B6: FAILED - undefined
+173/189 B0F8HS7CRZ: FAILED - undefined
+174/189 B0FGXHMNBB: FAILED - undefined
+175/189 B0FGXFJPGX: $20.99 ~?/mo 17220-5K0-A00 Engine Air Filter and 8029
+
+--- 175/189 done (128ok/47fail) 832s elapsed ---
+
+176/189 B0F6N45JS8: FAILED - undefined
+177/189 B0DT6V3FYR: FAILED - undefined
+178/189 B0FCR755TG: FAILED - undefined
+179/189 B0FFGTRCPW: FAILED - undefined
+180/189 B0DCF1SNYG: FAILED - undefined
+181/189 B0DRY6HNRC: FAILED - undefined
+182/189 B0FLXYF8Z3: FAILED - undefined
+183/189 B0D9BL7FDP: FAILED - undefined
+184/189 B0DXYJZW78: FAILED - undefined
+185/189 B0FN723JTK: FAILED - undefined
+186/189 B0F29K1473: FAILED - undefined
+187/189 B0FPKPQV32: FAILED - undefined
+188/189 B0DR33P47W: $29.79 ~?/mo SERVKITOUR Cabin Engine Air Filter for P
+189/189 B0D89YQ7CK: FAILED - undefined
+
+=== Done in 871s: 129 prices found, 60 failed ===
+
+Updated 88 competitor records in database.

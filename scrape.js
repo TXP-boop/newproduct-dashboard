@@ -30,18 +30,18 @@ function parseAmazonPage(html) {
   let bsr = null;
   let title = '';
 
-  // Title
   const titleMatch = html.match(/<title>([^<]+)<\/title>/);
   if (titleMatch) title = titleMatch[1].replace('Amazon.com: ', '').trim();
 
-  // Price - try multiple patterns from most to least specific
-  const priceAmounts = [...html.matchAll(/priceAmount[^:]*:\s*([\d.]+)/g)];
-  if (priceAmounts.length > 0) {
-    // First priceAmount is typically the main offer
-    price = parseFloat(priceAmounts[0][1]);
+  // Price patterns (try multiple)
+  const offscreen = html.match(/a-offscreen[^>]*>\$?([\d.]+)</);
+  if (offscreen) price = parseFloat(offscreen[1]);
+
+  if (!price) {
+    const dp = html.match(/displayPrice[^:]*:[^"]*"\$?([\d.]+)"/);
+    if (dp) price = parseFloat(dp[1]);
   }
 
-  // Fallback: a-price-whole + a-price-fraction
   if (!price) {
     const whole = html.match(/a-price-whole[^>]*>(\d+)/);
     const frac = html.match(/a-price-fraction[^>]*>(\d+)/);
