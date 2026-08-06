@@ -367,9 +367,8 @@ async function loadPanel3(searchQuery) {
           const histInfo = c.historical_price ? `立项时: $${c.historical_price.toFixed(2)} / 月销${Math.round(c.historical_volume||0)}` : '';
           if (c.current_price) {
             compHtml += `<div style="margin:2px 0;padding:3px 6px;background:#f6ffed;border-radius:3px;border-left:3px solid #52c41a">
-              <b>${c.asin}</b> | <b style="color:#1677ff">当前: $${c.current_price.toFixed(2)}</b> | 月销: ~${c.current_volume||'?'} | 卖家: ${c.seller}
-              ${histInfo?`<br>${histInfo}`:''}
-              ${c.price_change_note?` <span class="warn">${c.price_change_note}</span>`:''}
+              <b>${c.asin}</b> | ${histInfo} | 卖家: ${c.seller}
+              <br>当前: <b style="color:#1677ff">$${c.current_price.toFixed(2)}</b>${c.price_change_note?` <span class="warn">${c.price_change_note}</span>`:''}
             </div>`;
           } else {
             compHtml += `<div style="margin:2px 0;padding:3px 6px;background:#fafafa;border-radius:3px">

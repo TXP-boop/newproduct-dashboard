@@ -670,8 +670,30 @@ function processPriceResults(models, db, res) {
     if (compDetail) {
       const parts = compDetail.split('|').map(p => p.trim()).filter(Boolean);
       for (const part of parts) {
-        const m = part.match(/^(B0[A-Z0-9]+):\$?([\d.]+)\/([\d.]+)\/([\d.]+)(?:\(([^)]*)\))?\s*(?:\[(.+)\])?/);
-        if (!m) continue;
+        // New format: B0XXX:$price/seller [原:$oldPrice/月销oldVol] | [↑涨$X]
+        // Old format: B0XXX:price/volume/revenue(seller) or B0XXX:$price/volume/revenue(seller) [原:...]
+        let m = part.match(/^(B0[A-Z0-9]+):\$?([\d.]+)\/([\d.]+)\/([\d.]+)(?:\(([^)]*)\))?\s*(?:\[(.+)\])?/);
+        if (!m) {
+          // Try new scraper format: B0XXX:$price/seller [原:...]
+          m = part.match(/^(B0[A-Z0-9]+):\$?([\d.]+)\/([A-Za-z_]+)\s*(\[.+\])?/);
+          if (!m) continue;
+          const newFormatPrice = parseFloat(m[2]);
+          const newFormatSeller = m[3];
+          const newFormatNote = m[4] || '';
+          const origMatch = newFormatNote.match(/\[原:\$?([\d.]+)\/月销(\d+)\]/);
+          const chgMatch = newFormatNote.match(/\[[↑↓][涨跌]\$?([\d.]+)\]/);
+          competitors.push({
+            asin: m[1],
+            historical_price: origMatch ? parseFloat(origMatch[1]) : null,
+            historical_volume: origMatch ? parseInt(origMatch[2]) : null,
+            historical_revenue: null,
+            seller: newFormatSeller,
+            current_price: newFormatPrice,
+            current_volume: null,
+            price_change_note: chgMatch ? (newFormatNote.includes('↑') ? '↑涨$' + chgMatch[1] : '↓跌$' + chgMatch[1]) : ''
+          });
+          continue;
+        }
 
         const price = parseFloat(m[2]);
         const volume = parseFloat(m[3]);

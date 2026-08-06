@@ -158,10 +158,10 @@ async function main() {
       const oldVolume = parseFloat(m[3]) || 0;
       const priceDiff = sd.current_price - oldPrice;
       let note = ` [原:$${oldPrice}/月销${Math.round(oldVolume)}]`;
-      if (Math.abs(priceDiff) >= 3) {
-        note += priceDiff > 0 ? ' [↑涨$' + Math.abs(Math.round(priceDiff*100)/100) + ']' : ' [↓跌$' + Math.abs(Math.round(priceDiff*100)/100) + ']';
+      if (Math.abs(priceDiff) >= 1) {
+        note += ' | ' + (priceDiff > 0 ? '[↑涨' : '[↓跌') + '$' + Math.abs(Math.round(priceDiff*100)/100) + ']';
       }
-      return `${asin}:$${sd.current_price}/${sd.monthly_sales || '?'}/${Math.round((sd.current_price)*(sd.monthly_sales||0)*100)/100}(${m[5]||''})${note}`;
+      return `${asin}:$${sd.current_price}/${m[5]||''}${note}`;
     });
     if (changed) {
       db.prepare('UPDATE profit_estimation SET competitor_detail = ? WHERE id = ?').run(newParts.join(' | '), pe.id);
