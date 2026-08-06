@@ -381,15 +381,15 @@ app.get('/api/dashboard/fees', requireAuth, (req, res) => {
     if (monthlyData.length === 0) continue;
 
     // Find max sales month
-    const maxMonth = monthlyData.reduce((max, m) =>
-      (m.sales_volume || 0) > (max.sales_volume || 0) ? m : max, monthlyData[0]);
-
-    const revenue = maxMonth.sales_revenue || 1;
-    const actualUnitPriceRMB = (maxMonth.sales_volume > 0) ? revenue / maxMonth.sales_volume : 0;
+    const totalVol = monthlyData.reduce((s,m)=>s+(m.sales_volume||0),0);
+    const totalRev = monthlyData.reduce((s,m)=>s+(m.sales_revenue||0),0);
+    const wavg = (field) => totalVol===0?0:monthlyData.reduce((s,m)=>s+(m[field]||0)*(m.sales_volume||0),0)/totalVol;
+    const actualUnitPriceRMB = totalVol>0 ? totalRev/totalVol : 0;
     const actualUnitPriceUSD = actualUnitPriceRMB / 6.7;
     const estPrice = sku.est_price || 1;
     // 实测费率 = 实际占比 × 实际售价$ / 测算价$（消除售价变化对占比的影响）
     const priceRatio = actualUnitPriceUSD / estPrice;
+    const revenue = totalRev || 1;
 
     function feeObj(estRate, actRate) {
       return {
@@ -407,16 +407,16 @@ app.get('/api/dashboard/fees', requireAuth, (req, res) => {
       product_name: sku.product_name,
       batch: sku.batch,
       launch_date: sku.fba_first_arrival,
-      max_sales_month: maxMonth.month,
-      revenue: revenue,
+      max_sales_month: '',
+      revenue: Math.round(totalRev*100)/100,
       actual_unit_price: Math.round(actualUnitPriceUSD * 100) / 100,
       estimated_price: estPrice,
       fees: {
-        first_leg: feeObj(sku.est_first_leg, maxMonth.first_leg_ratio),
-        last_leg: feeObj(sku.est_last_leg, maxMonth.last_leg_ratio),
-        warehouse: feeObj(sku.est_warehouse, maxMonth.warehouse_ratio),
-        promotion: feeObj(sku.est_promotion_rate || 0, maxMonth.promotion_ratio),
-        refund: feeObj(sku.est_refund_rate || 0.0336, maxMonth.refund_rate)
+        first_leg: feeObj(sku.est_first_leg, wavg('first_leg_ratio')),
+        last_leg: feeObj(sku.est_last_leg, wavg('last_leg_ratio')),
+        warehouse: feeObj(sku.est_warehouse, wavg('warehouse_ratio')),
+        promotion: feeObj(sku.est_promotion_rate || 0, wavg('promotion_ratio')),
+        refund: feeObj(sku.est_refund_rate || 0.0336, wavg('refund_rate'))
       }
     });
   }
