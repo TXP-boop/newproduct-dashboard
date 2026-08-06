@@ -45,28 +45,11 @@
     </div>
     <div class="topbar-right">
       <span id="userDisplay"></span>
-      <button class="btn btn-sm" onclick="downloadReport()">📄 复盘报告</button>
-      <button class="btn btn-sm btn-outline" onclick="doLogout()">退出</button>
-    </div>
-  </header>
-
-  <nav class="tabs">
-    <button class="tab active" data-tab="panel1">📈 新品指标达成</button>
-    <button class="tab" data-tab="panel2">💰 费率比对</button>
-    <button class="tab" data-tab="panel3">🏷 价格监测</button>
-    <button class="tab" data-tab="panel4">⚠ 高退款型号清单</button>
-    <button class="tab" data-tab="datamgmt">📁 数据管理</button>
-  </nav>
-
-  <!-- Panel 1: KPI -->
-  <section id="panel1" class="panel active">
-    <div class="filter-bar">
-      <span class="filter-label">上架月份筛选：</span>
-      <div class="multi-select-dropdown" id="monthDropdown">
-        <button class="dropdown-toggle" onclick="toggleMonthDropdown()">
-          <span id="monthDropdownLabel">全部月份</span><span class="dropdown-arrow">▼</span>
+      <div class="multi-select-dropdown" id="monthDropdown" style="margin-right:12px">
+        <button class="dropdown-toggle" onclick="toggleMonthDropdown()" style="font-size:13px">
+          <span id="monthDropdownLabel">📅 上架月份: 全部</span><span class="dropdown-arrow">▼</span>
         </button>
-        <div class="dropdown-menu" id="monthDropdownMenu" style="display:none">
+        <div class="dropdown-menu" id="monthDropdownMenu" style="display:none;min-width:200px">
           <label><input type="checkbox" value="1" onchange="updateMonthSelection()"> 1月</label>
           <label><input type="checkbox" value="2" onchange="updateMonthSelection()"> 2月</label>
           <label><input type="checkbox" value="3" onchange="updateMonthSelection()"> 3月</label>
@@ -85,7 +68,21 @@
           </div>
         </div>
       </div>
+      <button class="btn btn-sm" onclick="downloadReport()">📄 复盘报告</button>
+      <button class="btn btn-sm btn-outline" onclick="doLogout()">退出</button>
     </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="panel1">📈 新品指标达成</button>
+    <button class="tab" data-tab="panel2">💰 费率比对</button>
+    <button class="tab" data-tab="panel3">🏷 价格监测</button>
+    <button class="tab" data-tab="panel4">⚠ 高退款型号清单</button>
+    <button class="tab" data-tab="datamgmt">📁 数据管理</button>
+  </nav>
+
+  <!-- Panel 1: KPI -->
+  <section id="panel1" class="panel active">
     <div class="kpi-cards">
       <div class="kpi-card"><div class="kpi-value" id="kpi-activation">--</div><div class="kpi-label">动销率</div></div>
       <div class="kpi-card"><div class="kpi-value" id="kpi-dd">--</div><div class="kpi-label">DD达成率</div></div>
