@@ -221,7 +221,7 @@ async function loadPanel1() {
     const ddSkus = data.details.filter(d => d.estimated_dd > 0).slice(0, 30);
     charts.dd = new Chart(document.getElementById('chartDD').getContext('2d'), {
       type: 'bar',
-      data: { labels: ddSkus.map(d => d.sku.replace('PT','').replace('KX','')), datasets: [
+      data: { labels: ddSkus.map(d => d.sku), datasets: [
         { label: '预测DD', data: ddSkus.map(d => d.estimated_dd), backgroundColor: '#91caff' },
         { label: '实际DD', data: ddSkus.map(d => d.actual_dd), backgroundColor: '#1677ff' }
       ]},
@@ -231,7 +231,7 @@ async function loadPanel1() {
     const mSkus = data.details.filter(d => d.has_sales).slice(0, 30);
     charts.margin = new Chart(document.getElementById('chartMargin').getContext('2d'), {
       type: 'bar',
-      data: { labels: mSkus.map(d => d.sku.replace('PT','').replace('KX','')), datasets: [{ label: '毛利率',
+      data: { labels: mSkus.map(d => d.sku), datasets: [{ label: '毛利率',
         data: mSkus.map(d => Math.round((d.max_monthly_margin||0)*10000)/100),
         backgroundColor: mSkus.map(d => (d.max_monthly_margin||0)>=0.2?'#52c41a':(d.max_monthly_margin||0)>=0?'#faad14':'#ff4d4f') }] },
       options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw + '%' } } }, scales: { y: { title: { display: true, text: '毛利率 %' } } } }
@@ -331,7 +331,7 @@ async function loadPanel3(searchQuery) {
 
     charts.price = new Chart(document.getElementById('chartPrice').getContext('2d'), {
       type: 'bar',
-      data: { labels: skus.map(d => d.sku.replace('PT','').replace('KX','')), datasets: [
+      data: { labels: skus.map(d => d.sku), datasets: [
         { label: '测算价', data: skus.map(d => d.estimated_price), backgroundColor: '#91caff' },
         { label: '红线价', data: skus.map(d => d.redline_price), backgroundColor: '#ffccc7', borderColor: '#ff4d4f', borderWidth: 1 },
         { label: '实际售价', data: skus.map(d => d.actual_price), backgroundColor: '#ffd591', borderColor: '#fa8c16', borderWidth: 1 }
