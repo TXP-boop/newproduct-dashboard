@@ -1196,7 +1196,7 @@ ${feeItems.map(f=>`<tr><td>${f.name}</td><td>${pct2(f.est)}</td><td>${pct2(f.act
 <div class="analysis-box${belowRedline.length>0?' risk-high':''}">
 <h4>🏷 价格风险</h4>
 <p>低于红线价的SKU: <b class="red">${belowRedline.length}个</b> | 低于测算价90%的SKU: <b class="warn">${belowTarget.length}个</b></p>
-${belowRedline.length>0?`<p>低于红线价SKU: ${belowRedline.slice(0,5).map(s=>s.sku+'(售价$${s.actPrice.toFixed(2)}/红线$${s.redline.toFixed(2)})').join('、')}${belowRedline.length>5?' 等':''}</p>`:''}
+${belowRedline.length>0?'<p>低于红线价SKU: '+belowRedline.slice(0,5).map(function(s){return s.sku+'(售价$'+s.actPrice.toFixed(2)+'/红线$'+s.redline.toFixed(2)+')'}).join('、')+(belowRedline.length>5?' 等':'')+'</p>':''}
 <p><b>建议：</b>低于红线价的SKU存在亏损风险，需评估是否可提价或通过降低采购成本、优化物流来改善。</p>
 </div>
 
