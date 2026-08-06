@@ -1108,8 +1108,12 @@ app.get('/api/report', requireAuth, async (req, res) => {
   ];
   const maxDeviation = feeItems.reduce((a,b)=>Math.abs(b.act-b.est)>Math.abs(a.act-a.est)?b:a,feeItems[0]);
 
-  // ============ ANALYSIS: REFUND ============
-  const highRefundSKUs = withData.filter(s=>s.refundAct>0.08).sort((a,b)=>b.refundAct-a.refundAct);
+  // ============ ANALYSIS: REFUND (3-month weighted) ============
+  for (const s of withData) {
+    const refData = db.prepare(`SELECT SUM(sales_revenue) as rev, SUM(refund_rate*sales_revenue) as rf FROM profit_loss WHERE sku=? AND month>='202605' AND month<='202608'`).get(s.sku);
+    s.refund3m = (refData&&refData.rev>0) ? refData.rf/refData.rev : 0;
+  }
+  const highRefundSKUs = withData.filter(s=>s.refund3m>0.08).sort((a,b)=>b.refund3m-a.refund3m);
 
   // ============ BUILD HTML ============
   const badge=(v,th)=>{if(v==null)return'';const n=Number(v);return n>=th?' class="red"':n>=th*0.6?' class="warn"':' class="green"';};
@@ -1200,7 +1204,7 @@ ${belowRedline.length>0?`<p>低于红线价SKU: ${belowRedline.slice(0,5).map(s=
 <div class="analysis-box${highRefundSKUs.length>0?' risk-high':''}">
 <h4>🛡 高退款SKU (近3月退款率>8%)</h4>
 <p>共 <b class="red">${highRefundSKUs.length}个</b> SKU退款率超过8%阈值</p>
-${highRefundSKUs.length>0?`<table><tr><th>SKU</th><th>型号</th><th>退款率</th><th>推广占比</th></tr>${highRefundSKUs.slice(0,10).map(s=>`<tr><td>${s.sku}</td><td>${s.model||''}</td><td class="red">${pct(s.refundAct)}</td><td>${pct(s.promoAct)}</td></tr>`).join('')}</table>`:''}
+${highRefundSKUs.length>0?`<table><tr><th>SKU</th><th>型号</th><th>近3月加权退款率</th></tr>${highRefundSKUs.slice(0,10).map(s=>`<tr><td>${s.sku}</td><td>${s.model||''}</td><td class="red">${pct(s.refund3m)}</td></tr>`).join('')}</table>`:''}
 <p><b>建议：</b>高退款SKU需排查产品质量、listing准确性、包装完整性。</p>
 </div>
 
