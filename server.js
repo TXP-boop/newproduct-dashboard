@@ -1059,10 +1059,10 @@ app.get('/api/report', requireAuth, async (req, res) => {
   const skuData = [];
   for (const s of validPE) {
     const npM = getNewProductMonths(db, s.sku);
-    if (!npM) { skuData.push({sku:s.sku,name:s.product_name,model:s.fram_model,brand:s.brand,estDD:s.dd_value,estPrice:s.estimated_price,redline:s.redline_price,hasData:false}); continue; }
+    if (!npM) { skuData.push({sku:s.sku,name:s.product_name,model:s.fram_model,brand:s.brand,estDD:s.dd_value,estPrice:s.estimated_price,redline:s.redline_price,hasData:false,latest:null}); continue; }
     const ph = npM.months.map(()=>'?').join(',');
     const mths = db.prepare(`SELECT * FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0`).all(s.sku, ...npM.months);
-    if (mths.length===0) { skuData.push({sku:s.sku,name:s.product_name,model:s.fram_model,brand:s.brand,estDD:s.dd_value,estPrice:s.estimated_price,redline:s.redline_price,hasData:false}); continue; }
+    if (mths.length===0) { skuData.push({sku:s.sku,name:s.product_name,model:s.fram_model,brand:s.brand,estDD:s.dd_value,estPrice:s.estimated_price,redline:s.redline_price,hasData:false,latest:null}); continue; }
     const maxS = mths.reduce((a,b)=>b.sales_volume>a.sales_volume?b:a,mths[0]);
     const maxM = mths.reduce((a,b)=>(b.gross_margin??-99)>(a.gross_margin??-99)?b:a,mths[0]);
     const actPriceUSD = (maxS.sales_revenue/(maxS.sales_volume||1))/6.7;
@@ -1078,8 +1078,21 @@ app.get('/api/report', requireAuth, async (req, res) => {
       flAct:maxM.first_leg_ratio, llAct:maxM.last_leg_ratio, whAct:maxM.warehouse_ratio,
       flEst:s.first_leg_ratio, llEst:s.last_leg_ratio, whEst:s.warehouse_ratio,
       promoEst:s.est_promotion_rate, refundEst:s.est_refund_rate,
-      hasData:true
+      hasData:true,
+      latest: null
     });
+    if ((skuData[skuData.length-1]).hasData) {
+      const latestPL = db.prepare(`SELECT month,sales_volume,sales_revenue,unit_price,gross_margin,gross_profit,promotion_ratio,refund_rate FROM profit_loss WHERE sku=? AND sales_volume>0 ORDER BY month DESC LIMIT 1`).get(s.sku);
+      if (latestPL) skuData[skuData.length-1].latest = {
+        month: latestPL.month,
+        price: Math.round((latestPL.sales_revenue/(latestPL.sales_volume||1))/6.7*100)/100,
+        margin: latestPL.gross_margin,
+        profit: latestPL.gross_profit,
+        promo: latestPL.promotion_ratio,
+        refund: latestPL.refund_rate,
+        volume: latestPL.sales_volume
+      };
+    }
   }
 
   // ============ AGGREGATE STATS ============
@@ -1111,6 +1124,12 @@ app.get('/api/report', requireAuth, async (req, res) => {
   // ============ ANALYSIS: PRICE ============
   const belowRedline = withData.filter(s=>s.redline&&s.actPrice<s.redline);
   const belowTarget = withData.filter(s=>s.estPrice&&s.actPrice<s.estPrice*0.9&&(!s.redline||s.actPrice>=s.redline));
+  const adjustedUp = belowRedline.filter(s=>s.latest&&s.latest.price>=s.redline);
+  const stillBelow = belowRedline.filter(s=>!s.latest||s.latest.price<s.redline);
+  // Check margin improvement after price adjustment
+  const marginImproved = adjustedUp.filter(s=>s.latest&&(s.latest.margin||-99)>(s.margin||-99));
+  // Price drop since NP period (latest < actual)
+  const priceDropped = withData.filter(s=>s.latest&&s.latest.price<s.actPrice*0.95);
 
   // ============ ANALYSIS: FEES ============
   let flE=0,flA=0,llE=0,llA=0,whE=0,whA=0,prE=0,prA=0,rfE=0,rfA=0,tr=0;
@@ -1204,13 +1223,27 @@ ${feeItems.map(f=>`<tr><td>${f.name}</td><td>${pct2(f.est)}</td><td>${pct2(f.act
 <p>费率偏差最大的是<b>${maxDeviation.name}</b>（偏差${Math.abs((maxDeviation.act-maxDeviation.est)*100).toFixed(2)}个百分点），建议重点关注。</p>
 </div>
 
-<h2>五、价格监测分析</h2>
+<h2>五、价格监测与调价分析</h2>
 <div class="analysis-box${belowRedline.length>0?' risk-high':''}">
-<h4>🏷 价格风险</h4>
-<p>低于红线价的SKU: <b class="red">${belowRedline.length}个</b> | 低于测算价90%的SKU: <b class="warn">${belowTarget.length}个</b></p>
-${belowRedline.length>0?'<p>低于红线价SKU: '+belowRedline.slice(0,5).map(function(s){return s.sku+'(售价$'+s.actPrice.toFixed(2)+'/红线$'+s.redline.toFixed(2)+')'}).join('、')+(belowRedline.length>5?' 等':'')+'</p>':''}
-<p><b>建议：</b>低于红线价的SKU存在亏损风险，需评估是否可提价或通过降低采购成本、优化物流来改善。</p>
+<h4>🏷 新品期价格风险</h4>
+<p>新品期（加权均价）低于红线价的SKU: <b class="red">${belowRedline.length}个</b>（占有销售SKU的${(belowRedline.length/withData.length*100).toFixed(1)}%）</p>
+<p>低于测算价90%（但高于红线）的SKU: <b class="warn">${belowTarget.length}个</b></p>
+${belowRedline.length>0?'<p>低于红线价SKU: '+belowRedline.slice(0,8).map(function(s){return s.sku+'(售价$'+s.actPrice.toFixed(2)+'/红线$'+s.redline.toFixed(2)+')'}).join('、')+(belowRedline.length>8?' 等'+belowRedline.length+'个':'')+'</p>':''}
 </div>
+
+<div class="analysis-box${adjustedUp.length>0?'':' risk-mid'}">
+<h4>📈 调价动作追踪</h4>
+<p>新品期低于红线价的${belowRedline.length}个SKU中，<b class="green">${adjustedUp.length}个</b>已通过调价回升至红线以上（占${belowRedline.length>0?(adjustedUp.length/belowRedline.length*100).toFixed(0):0}%），<b class="red">${stillBelow.length}个</b>仍低于红线。</p>
+${adjustedUp.length>0?`<table><tr><th>SKU</th><th>新品期均价</th><th>最新月售价</th><th>红线价</th><th>新品期毛利率</th><th>最新月毛利率</th><th>毛利率变化</th></tr>${adjustedUp.slice(0,15).map(s=>`<tr><td>${s.sku}</td><td>$${s.actPrice.toFixed(2)}</td><td class="green">$${s.latest.price.toFixed(2)}(${s.latest.month})</td><td>$${s.redline.toFixed(2)}</td><td>${pct(s.margin)}</td><td>${pct(s.latest.margin)}</td><td class="${(s.latest.margin||0)>(s.margin||0)?'green':'red'}">${(((s.latest.margin||0)-(s.margin||0))*100).toFixed(1)}pp</td></tr>`).join('')}</table>`:''}
+${marginImproved.length>0?`<p>其中 <b class="green">${marginImproved.length}个</b> SKU调价后毛利率同步提升，说明提价策略有效改善了盈利水平。</p>`:''}
+${stillBelow.length>0?`<p><b class="red">仍低于红线价的${stillBelow.length}个SKU：</b>${stillBelow.slice(0,8).map(s=>s.sku+'(售价$'+s.actPrice.toFixed(2)+'/红线$'+s.redline.toFixed(2)+')').join('、')}，建议优先处理。</p>`:''}
+</div>
+
+${priceDropped.length>0?`
+<div class="analysis-box risk-mid">
+<h4>⚠ 价格下行预警</h4>
+<p><b class="warn">${priceDropped.length}个</b> SKU最新月售价比新品期下降超过5%：${priceDropped.slice(0,5).map(s=>`${s.sku}($${s.actPrice.toFixed(2)}→$${s.latest.price.toFixed(2)})`).join('、')}${priceDropped.length>5?'等':''}。需关注竞对压价或市场需求变化。</p>
+</div>`:''}
 
 <h2>六、退款风险分析</h2>
 <div class="analysis-box${highRefundSKUs.length>0?' risk-high':''}">
@@ -1227,7 +1260,7 @@ ${highRefundSKUs.length>0?`<table><tr><th>SKU</th><th>型号</th><th>近3月加�
 <li><b>DD达成率：</b>${ddRate>=80?'表现良好，整体达成率'+ddRate+'%':'整体达成率'+ddRate+'%，偏低。'+lowDDWithSplit.length+'个型号因双链接分流导致单链达成率不足，建议合并运营或差异化定价'}</li>
 <li><b>毛利率：</b>${grossMargin>=20?'整体毛利率'+grossMargin+'%，盈利状况健康':'整体毛利率'+grossMargin+'%，偏低。'+negMargin.length+'个SKU负毛利，主要原因为'+(highPromoMargin.length>highRefundMargin.length?'推广费用过高':'售价偏低/退款率高')}</li>
 <li><b>费率控制：</b>${Math.abs((feeItems[3].act-feeItems[3].est))>0.05?'推广费偏差最大（实际比测算高'+Math.abs((feeItems[3].act-feeItems[3].est)*100).toFixed(1)+'pp），需优化广告投放策略':'各项费率偏差在可控范围内，费用管理较好'}</li>
-<li><b>价格风险：</b>${belowRedline.length>0?belowRedline.length+'个SKU低于红线价，存在亏损风险，建议优先处理':'无低于红线价的SKU'}</li>
+<li><b>价格与调价：</b>新品期${belowRedline.length}个SKU低于红线价，其中${adjustedUp.length}个已调价回升（${marginImproved.length}个毛利率同步改善），${stillBelow.length}个仍待处理。${priceDropped.length>0?priceDropped.length+'个SKU最新月降价超5%，需关注竞对动态。':''}</li>
 <li><b>退款风险：</b>${highRefundSKUs.length>0?highRefundSKUs.length+'个SKU退款率超标，需重点关注产品质量和listing准确性':'退款率整体可控'}</li>
 </ol>
 </div>
