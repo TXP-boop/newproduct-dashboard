@@ -112,6 +112,11 @@ function initDb() {
     INSERT OR IGNORE INTO categories (name) VALUES ('滤清组套');
   `);
 
+  // Fix any garbled category values
+  db.exec("UPDATE profit_estimation SET category='滤清组套' WHERE category!='滤清组套'");
+  db.exec("UPDATE profit_loss SET category='滤清组套' WHERE category!='滤清组套'");
+  db.exec("UPDATE inventory SET category='滤清组套' WHERE category!='滤清组套'");
+
   // Drop restrictive unique indexes that cause import issues
   try { db.exec('DROP INDEX IF EXISTS idx_pe'); } catch(e) {}
   try { db.exec('DROP INDEX IF EXISTS idx_pl'); } catch(e) {}

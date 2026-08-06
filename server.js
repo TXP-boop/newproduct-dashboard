@@ -170,13 +170,15 @@ function getCategory(req) {
   return req.query.category || req.session.currentCategory || '滤清组套';
 }
 
-// Helper: filter SKU list by launch month if months param provided
+// Helper: filter list by launch month
 function filterByLaunchMonth(items, monthsParam, skuField) {
   if (!monthsParam) return items;
   const monthSet = new Set(monthsParam.split(',').map(m => parseInt(m.trim())));
   const db = getDb();
   return items.filter(item => {
-    const sku = typeof item === 'string' ? item : (item[skuField || 'sku'] || item.sku);
+    let sku = typeof item === 'string' ? item : (item[skuField || 'sku'] || item.sku);
+    // For model objects with comma-separated skus, take first SKU
+    if (!sku && item.skus && typeof item.skus === 'string') sku = item.skus.split(',')[0].trim();
     if (!sku) return false;
     const inv = db.prepare('SELECT fba_first_arrival FROM inventory WHERE sku = ?').get(sku);
     if (!inv || !inv.fba_first_arrival) return false;
@@ -469,13 +471,17 @@ app.get('/api/dashboard/price', requireAuth, (req, res) => {
     WHERE pe.fram_model != '' AND inv.fba_first_arrival IS NOT NULL AND pe.category = ?
   `;
 
+  const { months } = req.query;
   if (search) {
     modelQuery += ` AND (pe.fram_model LIKE ? OR pe.sku LIKE ?)`;
-    return processPriceResults(
-      db.prepare(modelQuery + ' GROUP BY pe.fram_model ORDER BY pe.fram_model').all(category, `%${search}%`, `%${search}%`), db, res);
+    let models = db.prepare(modelQuery + ' GROUP BY pe.fram_model ORDER BY pe.fram_model').all(category, `%${search}%`, `%${search}%`);
+    if (months) models = filterByLaunchMonth(models, months, 'fram_model');
+    return processPriceResults(models, db, res);
   }
 
-  processPriceResults(db.prepare(modelQuery + ' GROUP BY pe.fram_model ORDER BY pe.fram_model').all(category), db, res);
+  let models = db.prepare(modelQuery + ' GROUP BY pe.fram_model ORDER BY pe.fram_model').all(category);
+  if (months) models = filterByLaunchMonth(models, months, 'fram_model');
+  processPriceResults(models, db, res);
 });
 
 // SKU-level price data for chart
@@ -492,8 +498,12 @@ app.get('/api/dashboard/price-sku', requireAuth, (req, res) => {
     WHERE inv.fba_first_arrival IS NOT NULL AND pe.category = ?
   `).all(category);
 
+  let filteredSkus = skus;
+  const { months } = req.query;
+  if (months) filteredSkus = filterByLaunchMonth(skus, months, 'sku');
+
   const results = [];
-  for (const sku of skus) {
+  for (const sku of filteredSkus) {
     const npMonths = getNewProductMonths(db, sku.sku);
     if (!npMonths) continue;
     const ph = npMonths.months.map(() => '?').join(',');
@@ -513,8 +523,7 @@ app.get('/api/dashboard/price-sku', requireAuth, (req, res) => {
       price_status: sku.redline_price && (avgPrice/6.7) < sku.redline_price ? 'below_redline' : 'normal'
     });
   }
-  const { months } = req.query;
-  res.json({ details: months ? filterByLaunchMonth(results, months, 'sku') : results });
+  res.json({ details: results });
 });
 
 // SKU综合详情（费率+价格+退款+KPI）
@@ -714,8 +723,7 @@ function processPriceResults(models, db, res) {
     });
   }
 
-  const { months } = req.query;
-  res.json({ details: months ? filterByLaunchMonth(results, months, 'fram_model') : results });
+  res.json({ details: results });
 }
 
 // Panel 4: High Refund Warning (按型号聚合)
