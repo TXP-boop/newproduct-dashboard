@@ -484,15 +484,18 @@ app.get('/api/dashboard/price-sku', requireAuth, (req, res) => {
     const ph = npMonths.months.map(() => '?').join(',');
     const monthly = db.prepare(`SELECT month, sales_volume, sales_revenue, unit_price FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0`).all(sku.sku, ...npMonths.months);
     if (monthly.length === 0) continue;
-    const maxMonth = monthly.reduce((max,m) => m.sales_volume>(max.sales_volume||0)?m:max, monthly[0]);
+    // 销量加权均价 = 新品期内总销售额÷总销量
+    const totalVol = monthly.reduce((s,m)=>s+(m.sales_volume||0),0);
+    const totalRev = monthly.reduce((s,m)=>s+(m.sales_revenue||0),0);
+    const avgPrice = totalVol>0 ? totalRev/totalVol : 0;
     results.push({
       sku: sku.sku,
       product_name: sku.product_name,
       fram_model: sku.fram_model,
       estimated_price: sku.estimated_price ? Math.round(sku.estimated_price*100)/100 : null,
       redline_price: sku.redline_price ? Math.round(sku.redline_price*100)/100 : null,
-      actual_price: Math.round((maxMonth.unit_price||0)/6.7*100)/100,
-      price_status: sku.redline_price && (maxMonth.unit_price/6.7) < sku.redline_price ? 'below_redline' : 'normal'
+      actual_price: Math.round(avgPrice/6.7*100)/100,
+      price_status: sku.redline_price && (avgPrice/6.7) < sku.redline_price ? 'below_redline' : 'normal'
     });
   }
   res.json({ details: results });
@@ -596,7 +599,9 @@ function processPriceResults(models, db, res) {
       if (monthlyData.length > 0) {
         const maxMonth = monthlyData.reduce((max, m) =>
           m.sales_volume > (max.sales_volume || 0) ? m : max, monthlyData[0]);
-        const actualPrice = (maxMonth.unit_price || 0) / 6.7;
+        const totalV = monthlyData.reduce((s,m)=>s+(m.sales_volume||0),0);
+        const totalR = monthlyData.reduce((s,m)=>s+(m.sales_revenue||0),0);
+        const actualPrice = totalV>0 ? (totalR/totalV)/6.7 : 0;
 
         // 每个SKU独立判断价格状态
         let skuStatus = 'normal';
