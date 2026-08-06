@@ -611,12 +611,19 @@ function processPriceResults(models, db, res) {
           skuStatus = 'below_target';
         }
 
+        // Latest month price (后续调价追踪)
+        const latestMonth = db.prepare(`SELECT month,unit_price FROM profit_loss WHERE sku=? AND sales_volume>0 ORDER BY month DESC LIMIT 1`).get(sku);
+        const latestPrice = latestMonth ? Math.round((latestMonth.unit_price/6.7)*100)/100 : null;
+        const latestMonthStr = latestMonth ? latestMonth.month : null;
+
         skuDetails.push({
           sku: sku,
           actual_price: Math.round(actualPrice * 100) / 100,
           price_status: skuStatus,
           max_sales_month: maxMonth.month,
-          max_sales_volume: Math.round(maxMonth.sales_volume)
+          max_sales_volume: Math.round(maxMonth.sales_volume),
+          latest_price: latestPrice,
+          latest_month: latestMonthStr
         });
       } else {
         skuDetails.push({
@@ -624,7 +631,9 @@ function processPriceResults(models, db, res) {
           actual_price: null,
           price_status: 'no_data',
           max_sales_month: null,
-          max_sales_volume: 0
+          max_sales_volume: 0,
+          latest_price: null,
+          latest_month: null
         });
       }
     }

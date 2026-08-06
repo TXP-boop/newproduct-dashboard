@@ -394,6 +394,7 @@ async function loadPanel3(searchQuery) {
           <td>${fmtUSD(d.estimated_price)}</td>
           <td>${fmtUSD(d.redline_price)}</td>
           <td class="${sd.price_status==='below_redline'?'bad':sd.price_status==='below_target'?'warn':'good'}">${sd.actual_price!=null?fmtUSD(sd.actual_price):'--'}</td>
+          <td class="${sd.latest_price&&sd.latest_price>sd.actual_price?'green':''}">${sd.latest_price!=null?fmtUSD(sd.latest_price)+(sd.latest_month?'('+sd.latest_month+')':''):'--'}</td>
           <td>${sStatus}</td>`;
         if (si === 0) {
           html += `<td rowspan="${sds.length}" style="max-width:350px;white-space:normal">${compHtml}</td>`;
