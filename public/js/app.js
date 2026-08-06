@@ -352,7 +352,7 @@ async function loadPanel3(searchQuery) {
     if (searchQuery) url += '&search=' + encodeURIComponent(searchQuery);
     const modelResp = await fetch(url);
     const modelData = await modelResp.json();
-    const statusMap = { normal: '🟢 正常', below_redline: '🔴 低于红线', below_target: '🟡 低于目标' };
+    const statusMap = { normal: '🟢 正常', below_redline: '🔴 低于红线', below_target: '🟡 低于目标', adjusted_up: '🔵 已调价回升' };
 
     document.querySelector('#priceTable tbody').innerHTML = modelData.details.slice(0,200).map(d => {
       const sds = d.sku_details || [];
@@ -722,7 +722,7 @@ async function showSkuDetail(sku) {
     const d = await resp.json();
     document.getElementById('skuDetailTitle').textContent = `SKU详情 - ${sku}`;
 
-    const statusMap = { normal: '🟢 正常', below_redline: '🔴 低于红线价' };
+    const statusMap = { normal: '🟢 正常', below_redline: '🔴 低于红线价', adjusted_up: '🔵 已调价回升' };
     const rp = v => (v != null && !isNaN(v)) ? Number(v*100).toFixed(2) + '%' : '--';
 
     let html = `

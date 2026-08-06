@@ -606,7 +606,7 @@ function processPriceResults(models, db, res) {
         // 每个SKU独立判断价格状态
         let skuStatus = 'normal';
         if (redlinePrice && actualPrice < redlinePrice) {
-          skuStatus = 'below_redline';
+          skuStatus = latestPrice && latestPrice >= redlinePrice ? 'adjusted_up' : 'below_redline';
         } else if (estimatedPrice && actualPrice < estimatedPrice * 0.9) {
           skuStatus = 'below_target';
         }
