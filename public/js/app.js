@@ -136,6 +136,7 @@ function apiUrl(path, extraParams) {
   const sep = path.includes('?') ? '&' : '?';
   let url = path + sep + 'category=' + encodeURIComponent(currentCategory);
   if (extraParams) url += '&' + extraParams;
+  if (currentMonthFilter) url += '&months=' + currentMonthFilter;
   return url;
 }
 

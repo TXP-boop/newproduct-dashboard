@@ -170,6 +170,20 @@ function getCategory(req) {
   return req.query.category || req.session.currentCategory || '滤清组套';
 }
 
+// Helper: filter SKU list by launch month if months param provided
+function filterByLaunchMonth(items, monthsParam, skuField) {
+  if (!monthsParam) return items;
+  const monthSet = new Set(monthsParam.split(',').map(m => parseInt(m.trim())));
+  const db = getDb();
+  return items.filter(item => {
+    const sku = typeof item === 'string' ? item : (item[skuField || 'sku'] || item.sku);
+    if (!sku) return false;
+    const inv = db.prepare('SELECT fba_first_arrival FROM inventory WHERE sku = ?').get(sku);
+    if (!inv || !inv.fba_first_arrival) return false;
+    return monthSet.has(new Date(inv.fba_first_arrival).getMonth() + 1);
+  });
+}
+
 // ============================================================
 // DASHBOARD API
 // ============================================================
@@ -431,7 +445,8 @@ app.get('/api/dashboard/fees', requireAuth, (req, res) => {
   summary.refund.est_rate = totalRevenue > 0 ? Math.round((summary.refund.est_total / totalRevenue) * 10000) / 100 : 0;
   summary.refund.act_rate = totalRevenue > 0 ? Math.round((summary.refund.act_total / totalRevenue) * 10000) / 100 : 0;
 
-  res.json({ summary, details: results });
+  const { months } = req.query;
+  res.json({ summary, details: months ? filterByLaunchMonth(results, months, 'sku') : results });
 });
 
 // Panel 3: Price Monitoring (按型号聚合 + SKU级别图表)
@@ -498,7 +513,8 @@ app.get('/api/dashboard/price-sku', requireAuth, (req, res) => {
       price_status: sku.redline_price && (avgPrice/6.7) < sku.redline_price ? 'below_redline' : 'normal'
     });
   }
-  res.json({ details: results });
+  const { months } = req.query;
+  res.json({ details: months ? filterByLaunchMonth(results, months, 'sku') : results });
 });
 
 // SKU综合详情（费率+价格+退款+KPI）
@@ -698,7 +714,8 @@ function processPriceResults(models, db, res) {
     });
   }
 
-  res.json({ details: results });
+  const { months } = req.query;
+  res.json({ details: months ? filterByLaunchMonth(results, months, 'fram_model') : results });
 }
 
 // Panel 4: High Refund Warning (按型号聚合)
