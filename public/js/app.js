@@ -367,8 +367,12 @@ async function loadPanel2() {
       const est = totalRev>0 ? Math.round(estSums[k]/totalRev*10000)/100 : 0;
       const adj = totalRev>0 ? Math.round(adjSums[k]/totalRev*10000)/100 : 0;
       const diff = adj - est;
-      const cls = Math.abs(diff) > 2 ? 'bad' : Math.abs(diff) > 1 ? 'warn' : '';
-      return `<div class="data-item"><span>${feeLabels[i]}</span><span><span style="font-size:12px;color:#999">测算${fmtPct(est)}</span> <b>实测${fmtPct(adj)}</b> <span class="${cls}">${diff>0?'↑':diff<0?'↓':''}${Math.abs(diff).toFixed(1)}pp</span></span></div>`;
+      const cls = Math.abs(diff) > 2 ? 'color:#ff4d4f' : Math.abs(diff) > 1 ? 'color:#faad14' : 'color:#52c41a';
+      return `<div class="data-item" style="justify-content:center;flex-direction:column;gap:1px;padding:4px 8px">
+        <span style="font-weight:600">${feeLabels[i]}</span>
+        <span style="font-size:11px">测算 ${fmtPct(est)} → 实测 <b>${fmtPct(adj)}</b></span>
+        <span style="font-size:11px;${cls}">${diff>0?'↑':diff<0?'↓':''}${Math.abs(diff).toFixed(1)}pp</span>
+      </div>`;
     }).join('');
 
     const fp = v => (v!=null&&!isNaN(v)) ? Number(v).toFixed(2) + '%' : '--';
