@@ -164,6 +164,7 @@ function refreshCurrentPanel() {
     case 'panel2': loadPanel2(); break;
     case 'panel3': loadPanel3(); break;
     case 'panel4': loadPanel4(); break;
+    case 'panel5': loadPanel5(); break;
     case 'datamgmt': loadDataMgmt(); break;
     default: loadPanel1();
   }
@@ -216,7 +217,9 @@ async function loadPanel1() {
     document.getElementById('kpi-activation').textContent = data.summary.sales_activation_rate + '%';
     document.getElementById('kpi-dd').textContent = data.summary.dd_achievement_rate + '%';
     document.getElementById('kpi-margin').textContent = data.summary.gross_margin + '%';
-    document.getElementById('kpi-count').textContent = data.summary.launched_count;
+    // 仅统计已上架SKU数
+    document.getElementById('kpi-count').textContent = data.details.filter(d => d.launch_date).length;
+    document.querySelector('#panel1 .kpi-cards .kpi-card:last-child .kpi-label').textContent = '已上架SKU数';
 
     // DD达成率分布饼图
     const ddDetails = data.details.filter(d => d.estimated_dd > 0);
@@ -301,7 +304,8 @@ async function loadPanel1() {
 }
 
 function renderKpiTable() {
-  let data = [...kpiAllData];
+  // 仅显示已上架的SKU（有fba_first_arrival的）
+  let data = kpiAllData.filter(d => d.launch_date);
   if (kpiSort.field) {
     data.sort((a,b) => {
       let va, vb;
@@ -628,6 +632,80 @@ async function loadAISuggestions(panel) {
 // ============================================================
 // Data Management Tab
 // ============================================================
+// ============================================================
+// Panel 5: 新品上架情况
+// ============================================================
+async function loadPanel5() {
+  try {
+    const resp = await fetch(apiUrl('/api/dashboard/launch-status'));
+    const data = await resp.json();
+
+    document.getElementById('launch-total').textContent = data.summary.total_pe;
+    document.getElementById('launch-launched').textContent = data.summary.launched;
+    document.getElementById('launch-cancelled').textContent = data.summary.cancelled;
+    document.getElementById('launch-rate').textContent = data.summary.launch_rate + '%';
+
+    // 取消下单明细表
+    let cancelHtml = '';
+    data.batches.forEach(b => {
+      const cancelledSkus = b.cancelled_list || [];
+      const unlaunchedSkus = b.unlaunched_list || [];
+      const maxRows = Math.max(cancelledSkus.length, unlaunchedSkus.length, 1);
+      for (let i = 0; i < maxRows; i++) {
+        cancelHtml += '<tr>';
+        if (i === 0) cancelHtml += `<td rowspan="${maxRows}"><b>${b.batch_name}</b></td><td rowspan="${maxRows}">${b.total}</td><td rowspan="${maxRows}">${b.cancelled}</td><td rowspan="${maxRows}">${b.unlaunched}</td><td rowspan="${maxRows}" class="${b.cancel_rate > 30 ? 'bad' : b.cancel_rate > 10 ? 'warn' : 'good'}">${b.cancel_rate}%</td>`;
+        if (cancelledSkus[i]) {
+          cancelHtml += `<td>${cancelledSkus[i].sku} ${cancelledSkus[i].fram_model ? '('+cancelledSkus[i].fram_model+')' : ''}<br><span style="font-size:11px;color:#ff4d4f">${cancelledSkus[i].cancel_reason}</span></td>`;
+        } else if (unlaunchedSkus[i]) {
+          cancelHtml += `<td style="color:#999">${unlaunchedSkus[i].sku} (无原因)</td>`;
+        } else {
+          cancelHtml += '<td></td>';
+        }
+        cancelHtml += '</tr>';
+      }
+    });
+    if (!data.batches.length) cancelHtml = '<tr><td colspan="6" style="text-align:center;color:#999">所有立项SKU均已上架 ✓</td></tr>';
+    document.querySelector('#cancelTable tbody').innerHTML = cancelHtml;
+
+    // 到货异常饼图（总体）
+    let totalOntime = 0, totalDelayed = 0;
+    data.delay_batches.forEach(b => { totalOntime += b.ontime; totalDelayed += b.delayed; });
+    const delayTotal = totalOntime + totalDelayed || 1;
+    if (charts.arrivalDelay) charts.arrivalDelay.destroy();
+    charts.arrivalDelay = new Chart(document.getElementById('chartArrivalDelay').getContext('2d'), {
+      type: 'pie',
+      data: { labels: ['正常到货','延迟到货'], datasets: [{ data: [totalOntime, totalDelayed], backgroundColor: ['#52c41a','#ff4d4f'] }] },
+      options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.raw + '个 (' + (ctx.raw/delayTotal*100).toFixed(1) + '%)' } } } }
+    });
+    document.getElementById('arrivalDelayDataList').innerHTML = [
+      {label:'正常到货', count: totalOntime, color:'#52c41a'},
+      {label:'延迟到货', count: totalDelayed, color:'#ff4d4f'}
+    ].map(d => `<div class="data-item" style="background:${d.color}15">
+      <span><span class="data-dot" style="background:${d.color}"></span>${d.label}</span>
+      <span><span class="data-pct">${(d.count/delayTotal*100).toFixed(1)}%</span> <span class="data-count">(${d.count}个)</span></span>
+    </div>`).join('');
+
+    // 到货异常明细表
+    let arrHtml = '';
+    data.delay_batches.forEach(b => {
+      const top5 = (b.delayed_list || []).slice(0, 5);
+      const maxRows = Math.max(top5.length, 1);
+      for (let i = 0; i < maxRows; i++) {
+        arrHtml += '<tr>';
+        if (i === 0) arrHtml += `<td rowspan="${maxRows}"><b>${b.batch_name}</b></td><td rowspan="${maxRows}">${b.total}</td><td rowspan="${maxRows}" class="good">${b.ontime}</td><td rowspan="${maxRows}" class="${b.delay_rate > 50 ? 'bad' : 'warn'}">${b.delayed}</td><td rowspan="${maxRows}" class="${b.delay_rate > 50 ? 'bad' : 'warn'}">${b.delay_rate}%</td><td rowspan="${maxRows}" class="${b.max_delay_days > 30 ? 'bad' : ''}">${b.max_delay_days}天</td>`;
+        if (top5[i]) {
+          arrHtml += `<td>${top5[i].sku} ${top5[i].fram_model ? '('+top5[i].fram_model+')' : ''} <span class="bad">+${top5[i].delay_days}天</span></td>`;
+        } else {
+          arrHtml += '<td></td>';
+        }
+        arrHtml += '</tr>';
+      }
+    });
+    if (!data.delay_batches.length) arrHtml = '<tr><td colspan="7" style="text-align:center;color:#999">无可分析的到货数据（需填写立项时间和预估到货周期）</td></tr>';
+    document.querySelector('#arrivalDelayTable tbody').innerHTML = arrHtml;
+  } catch(e) { console.error('Panel5:', e); }
+}
+
 async function loadDataMgmt() {
   updateShareUrl();
 

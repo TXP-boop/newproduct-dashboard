@@ -901,6 +901,127 @@ app.get('/api/dashboard/refunds', requireAuth, (req, res) => {
 });
 
 // ============================================================
+// 新品上架情况分析
+// ============================================================
+app.get('/api/dashboard/launch-status', requireAuth, (req, res) => {
+  const db = getDb();
+  const category = getCategory(req);
+  const { months } = req.query;
+
+  // 获取所有利润测算记录（含新增4列）
+  let allPE = db.prepare(`
+    SELECT pe.sku, pe.product_name, pe.fram_model, pe.batch,
+           pe.cancel_reason, pe.project_date, pe.delivery_date, pe.est_arrival_cycle,
+           inv.fba_first_arrival, inv.brand
+    FROM profit_estimation pe
+    LEFT JOIN inventory inv ON pe.sku = inv.sku AND pe.category = inv.category
+    WHERE pe.category = ?
+  `).all(category);
+
+  // Filter by launch month if specified
+  if (months) {
+    const monthSet = new Set(months.split(',').map(m => parseInt(m.trim())));
+    allPE = allPE.filter(s => {
+      if (!s.fba_first_arrival) return false;
+      return monthSet.has(new Date(s.fba_first_arrival).getMonth() + 1);
+    });
+  }
+
+  // ===== 未下单分析 =====
+  // 未上架的SKU（没有fba_first_arrival）
+  const unlaunched = allPE.filter(s => !s.fba_first_arrival);
+  // 其中有取消下单原因的（明确未下单）
+  const cancelled = unlaunched.filter(s => s.cancel_reason && s.cancel_reason.trim());
+  // 没有取消原因但也没上架的（状态不明）
+  const noStatus = unlaunched.filter(s => !s.cancel_reason || !s.cancel_reason.trim());
+
+  // 按立项时间(project_date)分批
+  const batchMap = {};
+  for (const s of allPE) {
+    const batch = s.project_date || '未填写立项时间';
+    if (!batchMap[batch]) batchMap[batch] = { total: 0, cancelled: 0, unlaunched: 0, cancelledList: [], unlaunchedList: [] };
+    batchMap[batch].total++;
+    if (!s.fba_first_arrival) {
+      batchMap[batch].unlaunched++;
+      if (s.cancel_reason && s.cancel_reason.trim()) {
+        batchMap[batch].cancelled++;
+        batchMap[batch].cancelledList.push({ sku: s.sku, product_name: s.product_name, fram_model: s.fram_model, cancel_reason: s.cancel_reason, project_date: s.project_date, est_arrival_cycle: s.est_arrival_cycle });
+      } else {
+        batchMap[batch].unlaunchedList.push({ sku: s.sku, product_name: s.product_name, fram_model: s.fram_model, cancel_reason: '', project_date: s.project_date, est_arrival_cycle: s.est_arrival_cycle });
+      }
+    }
+  }
+  const batches = Object.entries(batchMap).map(([name, data]) => ({
+    batch_name: name,
+    total: data.total,
+    cancelled: data.cancelled,
+    unlaunched: data.unlaunched - data.cancelled,
+    cancel_rate: data.total > 0 ? Math.round((data.cancelled / data.total) * 10000) / 100 : 0,
+    unlaunch_rate: data.total > 0 ? Math.round((data.unlaunched / data.total) * 10000) / 100 : 0,
+    cancelled_list: data.cancelledList,
+    unlaunched_list: data.unlaunchedList
+  })).sort((a, b) => a.batch_name.localeCompare(b.batch_name));
+
+  // ===== 到货异常分析（仅已上架且有立项时间+预估到货周期的SKU）=====
+  const launched = allPE.filter(s => s.fba_first_arrival);
+  const arrivalDelayResults = [];
+  const delayByBatch = {};
+
+  for (const s of launched) {
+    if (!s.project_date || !s.est_arrival_cycle) continue;
+    // 立项时间 + 预估到货周期（天）= 预估到货时间
+    const projectDt = new Date(s.project_date);
+    if (isNaN(projectDt.getTime())) continue;
+    const cycleDays = parseInt(s.est_arrival_cycle) || 0;
+    if (cycleDays <= 0) continue;
+    const estArrival = new Date(projectDt.getTime() + cycleDays * 86400000);
+    const actualArrival = new Date(s.fba_first_arrival);
+    const delayDays = Math.round((actualArrival - estArrival) / 86400000);
+
+    const batch = s.project_date || '未知批次';
+    if (!delayByBatch[batch]) delayByBatch[batch] = { ontime: 0, delayed: 0, delayedList: [], total: 0, maxDelay: 0 };
+    delayByBatch[batch].total++;
+
+    if (delayDays > 0) {
+      delayByBatch[batch].delayed++;
+      delayByBatch[batch].maxDelay = Math.max(delayByBatch[batch].maxDelay, delayDays);
+      delayByBatch[batch].delayedList.push({
+        sku: s.sku, product_name: s.product_name, fram_model: s.fram_model,
+        project_date: s.project_date, est_arrival_cycle: s.est_arrival_cycle,
+        fba_first_arrival: s.fba_first_arrival, delay_days: delayDays
+      });
+    } else {
+      delayByBatch[batch].ontime++;
+    }
+  }
+
+  const delayBatches = Object.entries(delayByBatch).map(([name, data]) => ({
+    batch_name: name,
+    total: data.total,
+    ontime: data.ontime,
+    delayed: data.delayed,
+    delay_rate: data.total > 0 ? Math.round((data.delayed / data.total) * 10000) / 100 : 0,
+    max_delay_days: data.maxDelay,
+    delayed_list: data.delayedList.sort((a, b) => b.delay_days - a.delay_days)
+  })).sort((a, b) => a.batch_name.localeCompare(b.batch_name));
+
+  res.json({
+    summary: {
+      total_pe: allPE.length,
+      launched: launched.length,
+      unlaunched: unlaunched.length,
+      cancelled: cancelled.length,
+      no_status: noStatus.length,
+      launch_rate: allPE.length > 0 ? Math.round((launched.length / allPE.length) * 10000) / 100 : 0
+    },
+    cancelled_list: cancelled,
+    no_status_list: noStatus,
+    batches,
+    delay_batches: delayBatches
+  });
+});
+
+// ============================================================
 // AI SUGGESTIONS (基于实际数据分析)
 // ============================================================
 app.get('/api/dashboard/suggestions/:panel', requireAuth, (req, res) => {
