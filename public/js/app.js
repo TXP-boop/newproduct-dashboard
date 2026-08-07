@@ -363,6 +363,14 @@ async function loadPanel2() {
       ]},
       options: { responsive: true, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw + '%' } } }, scales: { y: { title: { display: true, text: '费率 %' }, ticks: { callback: v => v + '%' } } } }
     });
+    document.getElementById('feeDataList').innerHTML = feeKeys.map((k, i) => {
+      const est = totalRev>0 ? Math.round(estSums[k]/totalRev*10000)/100 : 0;
+      const adj = totalRev>0 ? Math.round(adjSums[k]/totalRev*10000)/100 : 0;
+      const diff = adj - est;
+      const cls = Math.abs(diff) > 2 ? 'bad' : Math.abs(diff) > 1 ? 'warn' : 'good';
+      return `<div class="data-item"><span>${feeLabels[i]}</span><span>测算 <b>${fmtPct(est)}</b></span></div>
+        <div class="data-item" style="padding-left:16px;font-size:12px"><span>实测</span><span class="${cls}"><b>${fmtPct(adj)}</b> ${diff>0?'↑':diff<0?'↓':''}${Math.abs(diff).toFixed(2)}pp</span></div>`;
+    }).join('');
 
     const fp = v => (v!=null&&!isNaN(v)) ? Number(v).toFixed(2) + '%' : '--';
     document.querySelector('#feeTable tbody').innerHTML = data.details.slice(0,200).map(d => {
@@ -420,6 +428,29 @@ async function loadPanel3(searchQuery) {
       data: { labels: ['低于红线价','红线价-测算价','高于测算价'], datasets: [{ data: [latestStatusCounts.below_redline, latestStatusCounts.redline_to_estimated, latestStatusCounts.above_estimated], backgroundColor: ['#ff4d4f','#faad14','#52c41a'] }] },
       options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0)||1; return ctx.label + ': ' + ctx.raw + '个 (' + (ctx.raw/t*100).toFixed(1) + '%)'; } } } } }
     });
+    // Populate data boxes
+    const priceBuckets = [
+      {key:'below_redline',label:'低于红线价',color:'#ff4d4f'},
+      {key:'redline_to_estimated',label:'红线价-测算价',color:'#faad14'},
+      {key:'above_estimated',label:'高于测算价',color:'#52c41a'}
+    ];
+    const npTotal = skuData.details.length || 1;
+    document.getElementById('npPriceDataList').innerHTML = priceBuckets.map(b => {
+      const c = npStatusCounts[b.key] || 0;
+      return `<div class="data-item" style="background:${b.color}15">
+        <span><span class="data-dot" style="background:${b.color}"></span>${b.label}</span>
+        <span><span class="data-pct">${(c/npTotal*100).toFixed(1)}%</span> <span class="data-count">(${c}个)</span></span>
+      </div>`;
+    }).join('');
+    const hasLatest = skuData.details.filter(d => d.latest_price != null);
+    const latestTotal = hasLatest.length || 1;
+    document.getElementById('latestPriceDataList').innerHTML = priceBuckets.map(b => {
+      const c = latestStatusCounts[b.key] || 0;
+      return `<div class="data-item" style="background:${b.color}15">
+        <span><span class="data-dot" style="background:${b.color}"></span>${b.label}</span>
+        <span><span class="data-pct">${(c/latestTotal*100).toFixed(1)}%</span> <span class="data-count">(${c}个)</span></span>
+      </div>`;
+    }).join('');
 
     // Model table
     let url = apiUrl('/api/dashboard/price');

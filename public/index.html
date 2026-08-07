@@ -125,8 +125,8 @@
 
   <!-- Panel 2: Fees -->
   <section id="panel2" class="panel">
-    <div class="chart-row" style="grid-template-columns:1fr; max-width:700px; margin:0 auto 24px">
-      <div class="chart-box"><h3>费率占比比对（实测 vs 测算）</h3><canvas id="chartFeeRate"></canvas></div>
+    <div class="chart-row" style="grid-template-columns:1fr; max-width:900px; margin:0 auto 24px">
+      <div class="chart-box chart-with-data"><h3>费率占比比对（实测 vs 测算）</h3><div class="chart-data-layout"><div class="chart-canvas-wrap"><canvas id="chartFeeRate"></canvas></div><div class="chart-data-list" id="feeDataList"></div></div></div>
     </div>
     <div class="table-container">
       <h3>费率明细</h3>
@@ -147,8 +147,8 @@
       <div class="chart-box"><h3>实际售价 vs 测算价 vs 红线价（销量Top30 SKU）</h3><canvas id="chartPrice" style="max-height:400px"></canvas></div>
     </div>
     <div class="chart-row">
-      <div class="chart-box"><h3>价格状态分布（新品期）</h3><canvas id="chartPriceStatusNP"></canvas></div>
-      <div class="chart-box"><h3>价格状态分布（最新月）</h3><canvas id="chartPriceStatusLatest"></canvas></div>
+      <div class="chart-box chart-with-data"><h3>价格状态分布（新品期）</h3><div class="chart-data-layout"><div class="chart-canvas-wrap"><canvas id="chartPriceStatusNP"></canvas></div><div class="chart-data-list" id="npPriceDataList"></div></div></div>
+      <div class="chart-box chart-with-data"><h3>价格状态分布（最新月）</h3><div class="chart-data-layout"><div class="chart-canvas-wrap"><canvas id="chartPriceStatusLatest"></canvas></div><div class="chart-data-list" id="latestPriceDataList"></div></div></div>
     </div>
     <div class="table-toolbar" style="margin-bottom:8px">
       <button class="btn btn-sm" onclick="exportPriceSkuExcel()">📥 导出SKU价格数据</button>
@@ -241,6 +241,6 @@
   </section>
 </div>
 
-<script src="/js/app.js?v=11"></script>
+<script src="/js/app.js?v=12"></script>
 </body>
 </html>
