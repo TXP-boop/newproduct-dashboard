@@ -50,18 +50,18 @@
           <span id="monthDropdownLabel">📅 上架月份: 全部</span><span class="dropdown-arrow">▼</span>
         </button>
         <div class="dropdown-menu" id="monthDropdownMenu" style="display:none;min-width:200px">
-          <label><input type="checkbox" value="1" onchange="updateMonthSelection()"> 1月</label>
-          <label><input type="checkbox" value="2" onchange="updateMonthSelection()"> 2月</label>
-          <label><input type="checkbox" value="3" onchange="updateMonthSelection()"> 3月</label>
-          <label><input type="checkbox" value="4" onchange="updateMonthSelection()"> 4月</label>
-          <label><input type="checkbox" value="5" onchange="updateMonthSelection()"> 5月</label>
-          <label><input type="checkbox" value="6" onchange="updateMonthSelection()"> 6月</label>
-          <label><input type="checkbox" value="7" onchange="updateMonthSelection()"> 7月</label>
-          <label><input type="checkbox" value="8" onchange="updateMonthSelection()"> 8月</label>
-          <label><input type="checkbox" value="9" onchange="updateMonthSelection()"> 9月</label>
-          <label><input type="checkbox" value="10" onchange="updateMonthSelection()">10月</label>
-          <label><input type="checkbox" value="11" onchange="updateMonthSelection()">11月</label>
-          <label><input type="checkbox" value="12" onchange="updateMonthSelection()">12月</label>
+          <label><input type="checkbox" value="1" onchange="updateMonthSelection()"> 1月 <span class="month-count" id="mc1"></span></label>
+          <label><input type="checkbox" value="2" onchange="updateMonthSelection()"> 2月 <span class="month-count" id="mc2"></span></label>
+          <label><input type="checkbox" value="3" onchange="updateMonthSelection()"> 3月 <span class="month-count" id="mc3"></span></label>
+          <label><input type="checkbox" value="4" onchange="updateMonthSelection()"> 4月 <span class="month-count" id="mc4"></span></label>
+          <label><input type="checkbox" value="5" onchange="updateMonthSelection()"> 5月 <span class="month-count" id="mc5"></span></label>
+          <label><input type="checkbox" value="6" onchange="updateMonthSelection()"> 6月 <span class="month-count" id="mc6"></span></label>
+          <label><input type="checkbox" value="7" onchange="updateMonthSelection()"> 7月 <span class="month-count" id="mc7"></span></label>
+          <label><input type="checkbox" value="8" onchange="updateMonthSelection()"> 8月 <span class="month-count" id="mc8"></span></label>
+          <label><input type="checkbox" value="9" onchange="updateMonthSelection()"> 9月 <span class="month-count" id="mc9"></span></label>
+          <label><input type="checkbox" value="10" onchange="updateMonthSelection()">10月 <span class="month-count" id="mc10"></span></label>
+          <label><input type="checkbox" value="11" onchange="updateMonthSelection()">11月 <span class="month-count" id="mc11"></span></label>
+          <label><input type="checkbox" value="12" onchange="updateMonthSelection()">12月 <span class="month-count" id="mc12"></span></label>
           <div class="dropdown-actions">
             <button class="btn btn-sm" onclick="applyMonthFilter();toggleMonthDropdown()">应用</button>
             <button class="btn btn-sm btn-outline" onclick="clearMonthFilter();toggleMonthDropdown()">清除</button>
@@ -277,6 +277,6 @@
   </section>
 </div>
 
-<script src="/js/app.js?v=23"></script>
+<script src="/js/app.js?v=24"></script>
 </body>
 </html>

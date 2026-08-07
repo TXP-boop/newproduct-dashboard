@@ -144,6 +144,23 @@ app.post('/api/user/category', (req, res) => {
   res.json({ success: true });
 });
 
+// Get launch month distribution for the month filter dropdown
+app.get('/api/dashboard/launch-months', requireAuth, (req, res) => {
+  const db = getDb();
+  const category = getCategory(req);
+  const rows = db.prepare(`
+    SELECT inv.fba_first_arrival FROM inventory inv
+    INNER JOIN profit_estimation pe ON pe.sku = inv.sku AND pe.category = inv.category
+    WHERE inv.fba_first_arrival IS NOT NULL AND pe.category = ?
+  `).all(category);
+  const counts = {};
+  rows.forEach(r => {
+    const m = new Date(r.fba_first_arrival).getMonth() + 1; // 1-12
+    counts[m] = (counts[m] || 0) + 1;
+  });
+  res.json({ months: counts });
+});
+
 // ============================================================
 // CATEGORY API
 // ============================================================

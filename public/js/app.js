@@ -106,6 +106,7 @@ async function selectCategory(name) {
 
   switchTab('panel1');
   updateShareUrl();
+  loadMonthCounts();
 }
 
 function canManage() {
@@ -173,6 +174,21 @@ function refreshCurrentPanel() {
 // ============================================================
 // Month Filter Dropdown
 // ============================================================
+async function loadMonthCounts() {
+  try {
+    const resp = await fetch(apiUrl('/api/dashboard/launch-months'));
+    const data = await resp.json();
+    for (let m = 1; m <= 12; m++) {
+      const el = document.getElementById('mc' + m);
+      if (el) {
+        const c = data.months[m] || 0;
+        el.textContent = c > 0 ? c + '个' : '';
+        el.style.color = c > 0 ? '#1677ff' : '#ccc';
+      }
+    }
+  } catch(e) {}
+}
+
 function toggleMonthDropdown() {
   const menu = document.getElementById('monthDropdownMenu');
   menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
