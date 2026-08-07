@@ -52,6 +52,10 @@ function initDb() {
       est_last_leg_fee REAL,
       est_promotion_rate REAL DEFAULT 0,
       est_refund_rate REAL DEFAULT 0,
+      cancel_reason TEXT DEFAULT '',
+      project_date TEXT DEFAULT '',
+      delivery_date TEXT DEFAULT '',
+      est_arrival_cycle TEXT DEFAULT '',
       competitor_detail TEXT,
       created_at TEXT DEFAULT (datetime('now','localtime'))
     );
@@ -130,6 +134,11 @@ function initDb() {
   // Add per-SKU promotion/refund rate columns
   try { db.exec('ALTER TABLE profit_estimation ADD COLUMN est_promotion_rate REAL DEFAULT 0'); } catch(e) {}
   try { db.exec('ALTER TABLE profit_estimation ADD COLUMN est_refund_rate REAL DEFAULT 0'); } catch(e) {}
+  // Add 4 new tracking columns (取消下单原因/立项时间/交期/预估到货周期)
+  try { db.exec("ALTER TABLE profit_estimation ADD COLUMN cancel_reason TEXT DEFAULT ''"); } catch(e) {}
+  try { db.exec("ALTER TABLE profit_estimation ADD COLUMN project_date TEXT DEFAULT ''"); } catch(e) {}
+  try { db.exec("ALTER TABLE profit_estimation ADD COLUMN delivery_date TEXT DEFAULT ''"); } catch(e) {}
+  try { db.exec("ALTER TABLE profit_estimation ADD COLUMN est_arrival_cycle TEXT DEFAULT ''"); } catch(e) {}
 
   // Update existing data with default category
   db.exec("UPDATE profit_estimation SET category='滤清组套' WHERE category='' OR category IS NULL");

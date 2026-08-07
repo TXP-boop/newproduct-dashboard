@@ -1434,19 +1434,20 @@ function importExcelData(db, data, file_type, category) {
     if (!row || !Array.isArray(row)) continue;
 
     if (file_type === 'profit_estimation') {
-      // 用户模版格式:
-      // col0=SKU, col1=商品名称, col2=型号, col3=DD值
-      // col4=不含税采购价, col5=预估头程, col6=预估FBA尾程
-      // col18=AMZ竞对详情
-      // col23=FBA-测算价, col25=FBA-红线价
-      // col26=材料占比, col27=税费占比, col28=头程占比, col29=尾程占比
-      // col30=FBA-推广占比, col31=FBA-退款占比, col35=FBA-仓储占比
+      // 用户模版格式 (型号后新增4列: 取消下单原因/立项时间/交期/预估到货周期，后续列号+4):
+      // col0=SKU, col1=商品名称, col2=型号
+      // col3=取消下单原因, col4=立项时间, col5=交期, col6=预估到货周期
+      // col7=DD值, col8=不含税采购价, col9=预估头程, col10=预估FBA尾程
+      // col22=AMZ竞对详情
+      // col27=FBA-测算价, col29=FBA-红线价
+      // col30=材料占比, col31=税费占比, col32=头程占比, col33=尾程占比
+      // col34=FBA-推广占比, col35=FBA-退款占比, col39=FBA-仓储占比
       const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku) continue;
-      const estPromo = parseFloat(row[30]); // 模版中的推广占比
-      const estRefund = parseFloat(row[31]); // 模版中的退款占比
-      db.prepare(`INSERT OR REPLACE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, est_promotion_rate, est_refund_rate, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(category, sku, sku, row[1]||'', row[2]||'', '', parseFloat(row[23])||null, parseFloat(row[25])||null, parseFloat(row[3])||0, parseFloat(row[26])||null, parseFloat(row[27])||null, parseFloat(row[28])||null, parseFloat(row[29])||null, parseFloat(row[35])||null, null, parseFloat(row[4])||null, parseFloat(row[5])||null, parseFloat(row[6])||null, isNaN(estPromo)?0:estPromo, isNaN(estRefund)?0.0336:estRefund, String(row[18]||'').replace(/\n/g,' | '));
+      const estPromo = parseFloat(row[34]); // 模版中的推广占比
+      const estRefund = parseFloat(row[35]); // 模版中的退款占比
+      db.prepare(`INSERT OR REPLACE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, est_promotion_rate, est_refund_rate, cancel_reason, project_date, delivery_date, est_arrival_cycle, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+        .run(category, sku, sku, row[1]||'', row[2]||'', '', parseFloat(row[27])||null, parseFloat(row[29])||null, parseFloat(row[7])||0, parseFloat(row[30])||null, parseFloat(row[31])||null, parseFloat(row[32])||null, parseFloat(row[33])||null, parseFloat(row[39])||null, null, parseFloat(row[8])||null, parseFloat(row[9])||null, parseFloat(row[10])||null, isNaN(estPromo)?0:estPromo, isNaN(estRefund)?0.0336:estRefund, String(row[3]||'')||'', String(row[4]||'')||'', String(row[5]||'')||'', String(row[6]||'')||'', String(row[22]||'').replace(/\n/g,' | '));
       count++;
     } else if (file_type === 'profit_loss') {
       // 用户模版: col2=SKU, col5=月份, col6=销量, col7=销售额, col8=毛利润, col9=毛利率
