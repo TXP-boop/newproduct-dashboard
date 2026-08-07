@@ -367,9 +367,8 @@ async function loadPanel2() {
       const est = totalRev>0 ? Math.round(estSums[k]/totalRev*10000)/100 : 0;
       const adj = totalRev>0 ? Math.round(adjSums[k]/totalRev*10000)/100 : 0;
       const diff = adj - est;
-      const cls = Math.abs(diff) > 2 ? 'bad' : Math.abs(diff) > 1 ? 'warn' : 'good';
-      return `<div class="data-item"><span>${feeLabels[i]}</span><span>测算 <b>${fmtPct(est)}</b></span></div>
-        <div class="data-item" style="padding-left:16px;font-size:12px"><span>实测</span><span class="${cls}"><b>${fmtPct(adj)}</b> ${diff>0?'↑':diff<0?'↓':''}${Math.abs(diff).toFixed(2)}pp</span></div>`;
+      const cls = Math.abs(diff) > 2 ? 'bad' : Math.abs(diff) > 1 ? 'warn' : '';
+      return `<div class="data-item"><span>${feeLabels[i]}</span><span><span style="font-size:12px;color:#999">测算${fmtPct(est)}</span> <b>实测${fmtPct(adj)}</b> <span class="${cls}">${diff>0?'↑':diff<0?'↓':''}${Math.abs(diff).toFixed(1)}pp</span></span></div>`;
     }).join('');
 
     const fp = v => (v!=null&&!isNaN(v)) ? Number(v).toFixed(2) + '%' : '--';
