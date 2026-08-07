@@ -428,6 +428,7 @@ app.get('/api/dashboard/fees', requireAuth, (req, res) => {
   }
 
   // 汇总费率 = Σ各SKU费用额 ÷ Σ各SKU销售额（销售额加权，非各SKU费率的算术平均）
+  // 测算费用额 = 测算费率% × 实际销售额（用实际销售额做权重，确保与实测口径一致，差异仅来自费率偏差）
   // 实测费用额已消除售价偏差，公式：实际占比 × (实际售价$/测算价$) × 实际销售额
   const summary = {
     first_leg: { est_total: 0, act_total: 0 },
