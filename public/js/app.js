@@ -345,7 +345,8 @@ async function loadPanel2() {
     const feeKeys = ['first_leg','last_leg','warehouse','promotion','refund'];
     const feeLabels = ['头程','尾程','仓储','推广','退款'];
 
-    // 实测费率 vs 测算费率（用销量加权汇总）
+    // 费率 = Σ各SKU费用额 ÷ Σ各SKU销售额（销售额加权，与毛利率口径一致，非简单算术平均）
+    // 每SKU：实测费用额 = 实际费率(%) × 实际售价$/测算价$ × 实际月销售额（消除售价偏差后按销售额汇总）
     let totalRev = 0;
     const adjSums = {}, estSums = {};
     feeKeys.forEach(k => { adjSums[k] = 0; estSums[k] = 0; });

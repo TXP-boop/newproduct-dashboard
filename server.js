@@ -427,7 +427,8 @@ app.get('/api/dashboard/fees', requireAuth, (req, res) => {
     });
   }
 
-  // Aggregate summary
+  // 汇总费率 = Σ各SKU费用额 ÷ Σ各SKU销售额（销售额加权，非各SKU费率的算术平均）
+  // 实测费用额已消除售价偏差，公式：实际占比 × (实际售价$/测算价$) × 实际销售额
   const summary = {
     first_leg: { est_total: 0, act_total: 0 },
     last_leg: { est_total: 0, act_total: 0 },
