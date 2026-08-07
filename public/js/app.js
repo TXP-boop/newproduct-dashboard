@@ -246,6 +246,15 @@ async function loadPanel1() {
         }}}
       }}
     });
+    document.getElementById('ddDataList').innerHTML = [
+      {label:'<50%', count:ddBelow50, color:'#ff4d4f'},
+      {label:'50%-100%', count:dd50to100, color:'#faad14'},
+      {label:'100%-200%', count:dd100to200, color:'#91caff'},
+      {label:'>200%', count:ddAbove200, color:'#52c41a'}
+    ].map(d => `<div class="data-item" style="background:${d.color}15">
+      <span><span class="data-dot" style="background:${d.color}"></span>${d.label}</span>
+      <span><span class="data-pct">${(d.count/ddTotal*100).toFixed(1)}%</span> <span class="data-count">(${d.count}个)</span></span>
+    </div>`).join('');
 
     // 毛利率分布饼图
     const marginDetails = data.details.filter(d => d.has_sales && d.np_margin != null);
@@ -275,6 +284,15 @@ async function loadPanel1() {
         }}}
       }}
     });
+    document.getElementById('marginDataList').innerHTML = [
+      {label:'<0%', count:mBelow0, color:'#ff4d4f'},
+      {label:'0%-10%', count:m0to10, color:'#faad14'},
+      {label:'10%-20%', count:m10to20, color:'#91caff'},
+      {label:'>20%', count:mAbove20, color:'#52c41a'}
+    ].map(d => `<div class="data-item" style="background:${d.color}15">
+      <span><span class="data-dot" style="background:${d.color}"></span>${d.label}</span>
+      <span><span class="data-pct">${(d.count/mTotal*100).toFixed(1)}%</span> <span class="data-count">(${d.count}个)</span></span>
+    </div>`).join('');
 
     kpiAllData = data.details;
     renderKpiTable();
