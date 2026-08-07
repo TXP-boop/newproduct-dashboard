@@ -400,34 +400,35 @@ async function loadPanel2() {
 // ============================================================
 async function loadPanel3(searchQuery) {
   try {
-    // SKU-level chart data (now returns top 30 by volume)
+    // SKU-level data: 全部SKU（按新品期销量降序）
     const skuResp = await fetch(apiUrl('/api/dashboard/price-sku'));
     const skuData = await skuResp.json();
-    const skus = skuData.details; // already top 30 sorted by volume
+    const allSkus = skuData.details; // 全部SKU
+    const top30 = allSkus.slice(0, 30); // 折线图仅展示销量Top30
 
-    // Line chart: 实际售价 vs 测算价 vs 红线价
+    // Line chart: 实际售价 vs 测算价 vs 红线价（Top30）
     charts.price = new Chart(document.getElementById('chartPrice').getContext('2d'), {
       type: 'line',
-      data: { labels: skus.map(d => d.sku), datasets: [
-        { label: '测算价', data: skus.map(d => d.estimated_price), borderColor: '#1677ff', backgroundColor: 'transparent', tension: 0.1, pointRadius: 3 },
-        { label: '红线价', data: skus.map(d => d.redline_price), borderColor: '#ff4d4f', backgroundColor: 'transparent', borderDash: [5,3], tension: 0.1, pointRadius: 3 },
-        { label: '实际售价', data: skus.map(d => d.actual_price), borderColor: '#fa8c16', backgroundColor: 'transparent', tension: 0.1, pointRadius: 4, borderWidth: 2 }
+      data: { labels: top30.map(d => d.sku), datasets: [
+        { label: '测算价', data: top30.map(d => d.estimated_price), borderColor: '#1677ff', backgroundColor: 'transparent', tension: 0.1, pointRadius: 3 },
+        { label: '红线价', data: top30.map(d => d.redline_price), borderColor: '#ff4d4f', backgroundColor: 'transparent', borderDash: [5,3], tension: 0.1, pointRadius: 3 },
+        { label: '实际售价', data: top30.map(d => d.actual_price), borderColor: '#fa8c16', backgroundColor: 'transparent', tension: 0.1, pointRadius: 4, borderWidth: 2 }
       ]},
       options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { ticks: { maxRotation: 90, font: { size: 9 } } }, y: { title: { display: true, text: '价格 $' } } } }
     });
 
-    // 新品期价格状态分布饼图
+    // 新品期价格状态分布饼图（全部SKU，非仅Top30）
     const npStatusCounts = { below_redline: 0, redline_to_estimated: 0, above_estimated: 0 };
-    skuData.details.forEach(d => { npStatusCounts[d.price_status] = (npStatusCounts[d.price_status]||0)+1; });
+    allSkus.forEach(d => { npStatusCounts[d.price_status] = (npStatusCounts[d.price_status]||0)+1; });
     charts.priceStatusNP = new Chart(document.getElementById('chartPriceStatusNP').getContext('2d'), {
       type: 'pie',
       data: { labels: ['低于红线价','红线价-测算价','高于测算价'], datasets: [{ data: [npStatusCounts.below_redline, npStatusCounts.redline_to_estimated, npStatusCounts.above_estimated], backgroundColor: ['#ff4d4f','#faad14','#52c41a'] }] },
       options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0)||1; return ctx.label + ': ' + ctx.raw + '个 (' + (ctx.raw/t*100).toFixed(1) + '%)'; } } } } }
     });
 
-    // 最新月价格状态分布饼图
+    // 最新月价格状态分布饼图（全部SKU，非仅Top30）
     const latestStatusCounts = { below_redline: 0, redline_to_estimated: 0, above_estimated: 0 };
-    skuData.details.forEach(d => { if (d.latest_status) latestStatusCounts[d.latest_status] = (latestStatusCounts[d.latest_status]||0)+1; });
+    allSkus.forEach(d => { if (d.latest_status) latestStatusCounts[d.latest_status] = (latestStatusCounts[d.latest_status]||0)+1; });
     charts.priceStatusLatest = new Chart(document.getElementById('chartPriceStatusLatest').getContext('2d'), {
       type: 'pie',
       data: { labels: ['低于红线价','红线价-测算价','高于测算价'], datasets: [{ data: [latestStatusCounts.below_redline, latestStatusCounts.redline_to_estimated, latestStatusCounts.above_estimated], backgroundColor: ['#ff4d4f','#faad14','#52c41a'] }] },
@@ -439,7 +440,7 @@ async function loadPanel3(searchQuery) {
       {key:'redline_to_estimated',label:'红线价-测算价',color:'#faad14'},
       {key:'above_estimated',label:'高于测算价',color:'#52c41a'}
     ];
-    const npTotal = skuData.details.length || 1;
+    const npTotal = allSkus.length || 1;
     document.getElementById('npPriceDataList').innerHTML = priceBuckets.map(b => {
       const c = npStatusCounts[b.key] || 0;
       return `<div class="data-item" style="background:${b.color}15">
@@ -447,7 +448,7 @@ async function loadPanel3(searchQuery) {
         <span><span class="data-pct">${(c/npTotal*100).toFixed(1)}%</span> <span class="data-count">(${c}个)</span></span>
       </div>`;
     }).join('');
-    const hasLatest = skuData.details.filter(d => d.latest_price != null);
+    const hasLatest = allSkus.filter(d => d.latest_price != null);
     const latestTotal = hasLatest.length || 1;
     document.getElementById('latestPriceDataList').innerHTML = priceBuckets.map(b => {
       const c = latestStatusCounts[b.key] || 0;

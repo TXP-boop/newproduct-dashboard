@@ -549,10 +549,9 @@ app.get('/api/dashboard/price-sku', requireAuth, (req, res) => {
       latest_status: latestStatus
     });
   }
-  // Sort by NP sales volume desc, take top 30
+  // Sort by NP sales volume desc
   results.sort((a, b) => (b.np_volume || 0) - (a.np_volume || 0));
-  const top30 = results.slice(0, 30);
-  res.json({ details: top30, all_count: results.length });
+  res.json({ details: results, all_count: results.length });
 });
 
 // SKU综合详情（费率+价格+退款+KPI）
