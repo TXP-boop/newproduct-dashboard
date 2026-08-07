@@ -49,7 +49,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC'
 .chart-box { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden; }
 .chart-box h3 { font-size: 15px; color: #333; margin-bottom: 12px; }
 .chart-box canvas { max-height: 350px; max-width: 100%; }
-.chart-with-data canvas { max-height: 240px; }
+.chart-with-data canvas { max-height: 220px; }
 .chart-data-layout { display: flex; gap: 12px; align-items: center; }
 .chart-canvas-wrap { flex: 1; min-width: 0; }
 .chart-data-list { flex-shrink: 0; font-size: 12px; max-width: 180px; }
