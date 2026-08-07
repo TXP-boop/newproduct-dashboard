@@ -218,23 +218,62 @@ async function loadPanel1() {
     document.getElementById('kpi-margin').textContent = data.summary.gross_margin + '%';
     document.getElementById('kpi-count').textContent = data.summary.launched_count;
 
-    const ddSkus = data.details.filter(d => d.estimated_dd > 0).slice(0, 30);
+    // DD达成率分布饼图
+    const ddDetails = data.details.filter(d => d.estimated_dd > 0);
+    let ddBelow50 = 0, dd50to100 = 0, dd100to200 = 0, ddAbove200 = 0;
+    ddDetails.forEach(d => {
+      const v = d.dd_achievement || 0;
+      if (v < 50) ddBelow50++;
+      else if (v <= 100) dd50to100++;
+      else if (v <= 200) dd100to200++;
+      else ddAbove200++;
+    });
+    const ddTotal = ddDetails.length || 1;
     charts.dd = new Chart(document.getElementById('chartDD').getContext('2d'), {
-      type: 'bar',
-      data: { labels: ddSkus.map(d => d.sku), datasets: [
-        { label: '预测DD', data: ddSkus.map(d => d.estimated_dd), backgroundColor: '#91caff' },
-        { label: '实际DD', data: ddSkus.map(d => d.actual_dd), backgroundColor: '#1677ff' }
-      ]},
-      options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { title: { display: true, text: '日均销量' } } } }
+      type: 'pie',
+      data: {
+        labels: ['<50%', '50%-100%', '100%-200%', '>200%'],
+        datasets: [{
+          data: [ddBelow50, dd50to100, dd100to200, ddAbove200],
+          backgroundColor: ['#ff4d4f', '#faad14', '#91caff', '#52c41a']
+        }]
+      },
+      options: { responsive: true, plugins: {
+        legend: { position: 'bottom' },
+        tooltip: { callbacks: { label: ctx => {
+          const pct = (ctx.raw / ddTotal * 100).toFixed(1);
+          return ctx.label + ': ' + ctx.raw + '个SKU (' + pct + '%)';
+        }}}
+      }}
     });
 
-    const mSkus = data.details.filter(d => d.has_sales).slice(0, 30);
+    // 毛利率分布饼图
+    const marginDetails = data.details.filter(d => d.has_sales && d.np_margin != null);
+    let mBelow0 = 0, m0to10 = 0, m10to20 = 0, mAbove20 = 0;
+    marginDetails.forEach(d => {
+      const v = (d.np_margin || 0) * 100;
+      if (v < 0) mBelow0++;
+      else if (v <= 10) m0to10++;
+      else if (v <= 20) m10to20++;
+      else mAbove20++;
+    });
+    const mTotal = marginDetails.length || 1;
     charts.margin = new Chart(document.getElementById('chartMargin').getContext('2d'), {
-      type: 'bar',
-      data: { labels: mSkus.map(d => d.sku), datasets: [{ label: '毛利率',
-        data: mSkus.map(d => Math.round((d.max_monthly_margin||0)*10000)/100),
-        backgroundColor: mSkus.map(d => (d.max_monthly_margin||0)>=0.2?'#52c41a':(d.max_monthly_margin||0)>=0?'#faad14':'#ff4d4f') }] },
-      options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw + '%' } } }, scales: { y: { title: { display: true, text: '毛利率 %' } } } }
+      type: 'pie',
+      data: {
+        labels: ['<0%', '0%-10%', '10%-20%', '>20%'],
+        datasets: [{
+          data: [mBelow0, m0to10, m10to20, mAbove20],
+          backgroundColor: ['#ff4d4f', '#faad14', '#91caff', '#52c41a']
+        }]
+      },
+      options: { responsive: true, plugins: {
+        legend: { position: 'bottom' },
+        tooltip: { callbacks: { label: ctx => {
+          const pct = (ctx.raw / mTotal * 100).toFixed(1);
+          return ctx.label + ': ' + ctx.raw + '个SKU (' + pct + '%)';
+        }}}
+      }}
     });
 
     kpiAllData = data.details;
@@ -249,19 +288,21 @@ function renderKpiTable() {
     data.sort((a,b) => {
       let va, vb;
       if (kpiSort.field === 'dd') { va = a.dd_achievement || 0; vb = b.dd_achievement || 0; }
-      else { va = (a.max_monthly_margin != null) ? a.max_monthly_margin : -999; vb = (b.max_monthly_margin != null) ? b.max_monthly_margin : -999; }
+      else { va = (a.np_margin != null) ? a.np_margin : -999; vb = (b.np_margin != null) ? b.np_margin : -999; }
       return kpiSort.asc ? va - vb : vb - va;
     });
   }
   document.querySelector('#kpiTable tbody').innerHTML = data.map(d => {
     const ddPct = d.dd_achievement;
-    const marginPct = d.max_monthly_margin ? Math.round(d.max_monthly_margin*10000)/100 : null;
-    return `<tr data-ddpct="${ddPct}" data-margin="${marginPct!==null?marginPct:'--'}">
+    const npMarginPct = d.np_margin != null ? Math.round(d.np_margin*10000)/100 : null;
+    const latestMarginPct = d.latest_margin != null ? Math.round(d.latest_margin*10000)/100 : null;
+    return `<tr data-ddpct="${ddPct}" data-margin="${npMarginPct!==null?npMarginPct:'--'}">
     <td><a href="#" onclick="showSkuDetail('${d.sku}');return false" style="color:#1677ff;text-decoration:underline" title="${d.product_name||''}">${d.sku}</a></td>
     <td>${d.launch_date||''}</td>
     <td>${Math.round(d.max_monthly_sales)}</td><td>${d.max_month||''}</td><td>${fmt2(d.actual_dd)}</td><td>${fmt2(d.estimated_dd)}</td>
     <td class="${ddPct>=100?'good':ddPct>=60?'warn':'bad'}">${fmtPct(ddPct)}</td>
-    <td>${d.max_margin_month||''}</td><td class="${(d.max_monthly_margin||0)>=0.2?'good':(d.max_monthly_margin||0)>=0?'warn':'bad'}">${marginPct!==null?fmtPct(marginPct):'--'}</td>
+    <td class="${(d.np_margin||0)>=0.2?'good':(d.np_margin||0)>=0?'warn':'bad'}">${npMarginPct!==null?fmtPct(npMarginPct):'--'}</td>
+    <td class="${(d.latest_margin||0)>(d.np_margin||0)?'green':(d.latest_margin||0)<(d.np_margin||0)-0.02?'bad':''}">${latestMarginPct!==null?fmtPct(latestMarginPct):'--'}</td>
   </tr>`;
   }).join('');
   applyKpiFilters();
@@ -286,19 +327,23 @@ async function loadPanel2() {
     const feeKeys = ['first_leg','last_leg','warehouse','promotion','refund'];
     const feeLabels = ['头程','尾程','仓储','推广','退款'];
 
+    // 实测费率 vs 测算费率（用销量加权汇总）
+    let totalRev = 0;
+    const adjSums = {}, estSums = {};
+    feeKeys.forEach(k => { adjSums[k] = 0; estSums[k] = 0; });
+    for (const r of data.details) {
+      totalRev += (r.revenue || 0);
+      for (const k of feeKeys) {
+        adjSums[k] += (r.fees[k].adjusted_value || 0);
+        estSums[k] += (r.fees[k].estimated_value || 0);
+      }
+    }
     charts.feeRate = new Chart(document.getElementById('chartFeeRate').getContext('2d'), {
       type: 'bar', data: { labels: feeLabels, datasets: [
-        { label: '测算费率', data: feeKeys.map(k => data.summary[k].est_rate), backgroundColor: '#91caff' },
-        { label: '实际费率', data: feeKeys.map(k => data.summary[k].act_rate), backgroundColor: '#1677ff' }
+        { label: '测算费率', data: feeKeys.map(k => totalRev>0 ? Math.round(estSums[k]/totalRev*10000)/100 : 0), backgroundColor: '#91caff' },
+        { label: '实测费率', data: feeKeys.map(k => totalRev>0 ? Math.round(adjSums[k]/totalRev*10000)/100 : 0), backgroundColor: '#1677ff' }
       ]},
       options: { responsive: true, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw + '%' } } }, scales: { y: { title: { display: true, text: '费率 %' }, ticks: { callback: v => v + '%' } } } }
-    });
-    charts.feeValue = new Chart(document.getElementById('chartFeeValue').getContext('2d'), {
-      type: 'bar', data: { labels: feeLabels, datasets: [
-        { label: '测算费用($)', data: feeKeys.map(k => Math.round(data.summary[k].est_total*100)/100), backgroundColor: '#91caff' },
-        { label: '实际费用($)', data: feeKeys.map(k => Math.round(data.summary[k].act_total*100)/100), backgroundColor: '#1677ff' }
-      ]},
-      options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { title: { display: true, text: '费用 $' } } } }
     });
 
     const fp = v => (v!=null&&!isNaN(v)) ? Number(v).toFixed(2) + '%' : '--';
@@ -324,27 +369,38 @@ async function loadPanel2() {
 // ============================================================
 async function loadPanel3(searchQuery) {
   try {
-    // SKU-level chart data
+    // SKU-level chart data (now returns top 30 by volume)
     const skuResp = await fetch(apiUrl('/api/dashboard/price-sku'));
     const skuData = await skuResp.json();
-    const skus = skuData.details.slice(0, 30);
+    const skus = skuData.details; // already top 30 sorted by volume
 
+    // Line chart: 实际售价 vs 测算价 vs 红线价
     charts.price = new Chart(document.getElementById('chartPrice').getContext('2d'), {
-      type: 'bar',
+      type: 'line',
       data: { labels: skus.map(d => d.sku), datasets: [
-        { label: '测算价', data: skus.map(d => d.estimated_price), backgroundColor: '#91caff' },
-        { label: '红线价', data: skus.map(d => d.redline_price), backgroundColor: '#ffccc7', borderColor: '#ff4d4f', borderWidth: 1 },
-        { label: '实际售价', data: skus.map(d => d.actual_price), backgroundColor: '#ffd591', borderColor: '#fa8c16', borderWidth: 1 }
+        { label: '测算价', data: skus.map(d => d.estimated_price), borderColor: '#1677ff', backgroundColor: 'transparent', tension: 0.1, pointRadius: 3 },
+        { label: '红线价', data: skus.map(d => d.redline_price), borderColor: '#ff4d4f', backgroundColor: 'transparent', borderDash: [5,3], tension: 0.1, pointRadius: 3 },
+        { label: '实际售价', data: skus.map(d => d.actual_price), borderColor: '#fa8c16', backgroundColor: 'transparent', tension: 0.1, pointRadius: 4, borderWidth: 2 }
       ]},
-      options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { title: { display: true, text: '价格 $' } } } }
+      options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { ticks: { maxRotation: 90, font: { size: 9 } } }, y: { title: { display: true, text: '价格 $' } } } }
     });
 
-    const statusCounts = { normal: 0, below_redline: 0 };
-    skuData.details.forEach(d => statusCounts[d.price_status] = (statusCounts[d.price_status]||0)+1);
-    charts.priceStatus = new Chart(document.getElementById('chartPriceStatus').getContext('2d'), {
-      type: 'doughnut',
-      data: { labels: ['正常','低于红线价'], datasets: [{ data: [statusCounts.normal,statusCounts.below_redline], backgroundColor: ['#52c41a','#ff4d4f'] }] },
-      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    // 新品期价格状态分布饼图
+    const npStatusCounts = { below_redline: 0, redline_to_estimated: 0, above_estimated: 0 };
+    skuData.details.forEach(d => { npStatusCounts[d.price_status] = (npStatusCounts[d.price_status]||0)+1; });
+    charts.priceStatusNP = new Chart(document.getElementById('chartPriceStatusNP').getContext('2d'), {
+      type: 'pie',
+      data: { labels: ['低于红线价','红线价-测算价','高于测算价'], datasets: [{ data: [npStatusCounts.below_redline, npStatusCounts.redline_to_estimated, npStatusCounts.above_estimated], backgroundColor: ['#ff4d4f','#faad14','#52c41a'] }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0)||1; return ctx.label + ': ' + ctx.raw + '个 (' + (ctx.raw/t*100).toFixed(1) + '%)'; } } } } }
+    });
+
+    // 最新月价格状态分布饼图
+    const latestStatusCounts = { below_redline: 0, redline_to_estimated: 0, above_estimated: 0 };
+    skuData.details.forEach(d => { if (d.latest_status) latestStatusCounts[d.latest_status] = (latestStatusCounts[d.latest_status]||0)+1; });
+    charts.priceStatusLatest = new Chart(document.getElementById('chartPriceStatusLatest').getContext('2d'), {
+      type: 'pie',
+      data: { labels: ['低于红线价','红线价-测算价','高于测算价'], datasets: [{ data: [latestStatusCounts.below_redline, latestStatusCounts.redline_to_estimated, latestStatusCounts.above_estimated], backgroundColor: ['#ff4d4f','#faad14','#52c41a'] }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0)||1; return ctx.label + ': ' + ctx.raw + '个 (' + (ctx.raw/t*100).toFixed(1) + '%)'; } } } } }
     });
 
     // Model table
@@ -413,8 +469,8 @@ function searchModel() {
 async function exportPriceSkuExcel() {
   const resp = await fetch(apiUrl('/api/dashboard/price-sku'));
   const data = await resp.json();
-  const rows = [['SKU','产品名称','型号','测算价$','红线价$','实际售价$','状态']];
-  data.details.forEach(d => rows.push([d.sku,d.product_name,d.fram_model,d.estimated_price,d.redline_price,d.actual_price,d.price_status]));
+  const rows = [['SKU','产品名称','型号','测算价$','红线价$','新品期实际售价$','新品期状态','最新月售价$','最新月状态']];
+  data.details.forEach(d => rows.push([d.sku,d.product_name,d.fram_model,d.estimated_price,d.redline_price,d.actual_price,d.price_status,d.latest_price,d.latest_status]));
   XLSX.writeFile(XLSX.utils.book_new(XLSX.utils.aoa_to_sheet(rows),'SKU价格'), 'SKU价格数据.xlsx');
 }
 
@@ -735,7 +791,8 @@ async function showSkuDetail(sku) {
         <h4>📈 指标达成</h4>
         <p>预测DD: ${d.kpi.est_dd} | 实际DD: ${d.kpi.actual_dd} | <b>达成率: ${d.kpi.dd_pct}%</b></p>
         <p>最高月销: ${d.kpi.max_sales} (${d.kpi.max_sales_month})</p>
-        <p>最高毛利率: ${rp(d.kpi.max_margin)} (${d.kpi.max_margin_month})</p>
+        <p>新品期毛利率: <b>${rp(d.kpi.np_margin)}</b></p>
+        <p>最新月份毛利率: <b>${rp(d.kpi.latest_margin)}</b></p>
       </div>`;
     }
 

@@ -86,12 +86,12 @@
     <div class="kpi-cards">
       <div class="kpi-card"><div class="kpi-value" id="kpi-activation">--</div><div class="kpi-label">动销率</div></div>
       <div class="kpi-card"><div class="kpi-value" id="kpi-dd">--</div><div class="kpi-label">DD达成率</div></div>
-      <div class="kpi-card"><div class="kpi-value" id="kpi-margin">--</div><div class="kpi-label">毛利率（新品期最高月）</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi-margin">--</div><div class="kpi-label">毛利率（新品期累计）</div></div>
       <div class="kpi-card"><div class="kpi-value" id="kpi-count">--</div><div class="kpi-label">上架SKU数</div></div>
     </div>
     <div class="chart-row">
-      <div class="chart-box"><h3>DD达成率 - 逐SKU</h3><canvas id="chartDD"></canvas></div>
-      <div class="chart-box"><h3>毛利率 - 逐SKU</h3><canvas id="chartMargin"></canvas></div>
+      <div class="chart-box"><h3>DD达成率分布</h3><canvas id="chartDD"></canvas></div>
+      <div class="chart-box"><h3>毛利率分布</h3><canvas id="chartMargin"></canvas></div>
     </div>
     <div class="table-container">
       <h3>SKU明细</h3>
@@ -105,7 +105,7 @@
         <input type="number" id="marginMax" placeholder="最大%" style="width:70px;padding:4px 6px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px" onchange="applyKpiFilters()">
         <button class="btn btn-sm" onclick="exportTable('kpiTable','新品指标达成.csv')">📥 导出CSV</button>
       </div>
-      <div class="table-wrap"><table id="kpiTable" class="data-table"><thead><tr><th>商品编码(SKU)</th><th>上架日期</th><th>新品期最高月销量</th><th>最高月</th><th>实际DD</th><th>预测DD</th><th class="sortable" onclick="sortKpiTable('dd')">DD达成率 <span class="sort-arrow" id="arrow-dd"></span></th><th>最高毛利率月</th><th class="sortable" onclick="sortKpiTable('margin')">毛利率 <span class="sort-arrow" id="arrow-margin"></span></th></tr></thead><tbody></tbody></table></div>
+      <div class="table-wrap"><table id="kpiTable" class="data-table"><thead><tr><th>商品编码(SKU)</th><th>上架日期</th><th>新品期最高月销量</th><th>最高月</th><th>实际DD</th><th>预测DD</th><th class="sortable" onclick="sortKpiTable('dd')">DD达成率 <span class="sort-arrow" id="arrow-dd"></span></th><th class="sortable" onclick="sortKpiTable('margin')">新品期毛利率 <span class="sort-arrow" id="arrow-margin"></span></th><th>最新月份毛利率</th></tr></thead><tbody></tbody></table></div>
     </div>
     <!-- SKU Detail Modal -->
     <div id="skuDetailModal" class="modal" style="display:none">
@@ -119,15 +119,14 @@
     <div class="calc-notes">
       <h4>📐 计算规则说明</h4>
       <p><b>DD达成率</b>：每个SKU取新品期（上架次月/次次月/次次次月）最高月销量 ÷ 30 = 实际DD，实际DD ÷ 预测DD × 100% = 逐SKU达成率；汇总时 Σ实际DD ÷ Σ预测DD × 100% = 整体DD达成率</p>
-      <p><b>毛利率</b>：每个SKU取新品期内毛利率最高月份的毛利润和销售额，汇总后 Σ各SKU最高毛利率月毛利润 ÷ Σ各SKU最高毛利率月销售额 × 100%</p>
+      <p><b>毛利率</b>：各SKU的毛利率 = 新品期内累计毛利额 ÷ 累计销售额；整体毛利率 = Σ各SKU新品期累计毛利额 ÷ Σ各SKU新品期累计销售额 × 100%</p>
     </div>
   </section>
 
   <!-- Panel 2: Fees -->
   <section id="panel2" class="panel">
     <div class="chart-row">
-      <div class="chart-box"><h3>费率占比比对（实际 vs 测算）</h3><canvas id="chartFeeRate"></canvas></div>
-      <div class="chart-box"><h3>费用值比对（实际 vs 测算）</h3><canvas id="chartFeeValue"></canvas></div>
+      <div class="chart-box"><h3>费率占比比对（实测 vs 测算）</h3><canvas id="chartFeeRate"></canvas></div>
     </div>
     <div class="table-container">
       <h3>费率明细</h3>
@@ -137,7 +136,7 @@
     <div id="aiPanel2" class="ai-suggestions"></div>
     <div class="calc-notes">
       <h4>📐 费率计算规则</h4>
-      <p><b>实际费率</b> = 新品期内各月<b>销量加权平均值</b>（非单月最高月数据）。<b>实测费率</b> = 实际占比 × (实际售价$ ÷ 测算价$)，消除售价变化对费率占比的影响。</p>
+      <p><b>实测费率</b> = 实际占比 × (实际售价$ ÷ 测算价$)，消除售价变化对费率占比的影响。图表中以<b>实测费率 vs 测算费率</b>进行比对，更准确反映费用结构偏差。</p>
       <p><b>示例</b>：头程测算2.54%，实际3.93%（售价从$29.44降至$23.88导致占比虚高），实测3.19%≈测算值，说明头程费用本身并未超预算。</p>
     </div>
   </section>
@@ -145,8 +144,9 @@
   <!-- Panel 3: Price -->
   <section id="panel3" class="panel">
     <div class="chart-row">
-      <div class="chart-box"><h3>实际售价 vs 测算价 vs 红线价（SKU维度）</h3><canvas id="chartPrice"></canvas></div>
-      <div class="chart-box"><h3>价格状态分布</h3><canvas id="chartPriceStatus"></canvas></div>
+      <div class="chart-box" style="flex:2"><h3>实际售价 vs 测算价 vs 红线价（销量Top30 SKU）</h3><canvas id="chartPrice"></canvas></div>
+      <div class="chart-box"><h3>价格状态分布（新品期）</h3><canvas id="chartPriceStatusNP"></canvas></div>
+      <div class="chart-box"><h3>价格状态分布（最新月）</h3><canvas id="chartPriceStatusLatest"></canvas></div>
     </div>
     <div class="table-toolbar" style="margin-bottom:8px">
       <button class="btn btn-sm" onclick="exportPriceSkuExcel()">📥 导出SKU价格数据</button>
@@ -239,6 +239,6 @@
   </section>
 </div>
 
-<script src="/js/app.js?v=6"></script>
+<script src="/js/app.js?v=7"></script>
 </body>
 </html>

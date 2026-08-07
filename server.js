@@ -236,7 +236,7 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
 
   for (const sku of allSkus) {
     if (!sku.fba_first_arrival) {
-      results.push({ sku: sku.sku, product_name: sku.product_name, fram_model: sku.fram_model, brand: sku.brand, batch: sku.batch, launch_date: null, has_sales: false, max_monthly_sales: 0, max_monthly_margin: null, actual_dd: 0, estimated_dd: sku.dd_value || 0, dd_achievement: 0 });
+      results.push({ sku: sku.sku, product_name: sku.product_name, fram_model: sku.fram_model, brand: sku.brand, batch: sku.batch, launch_date: null, has_sales: false, max_monthly_sales: 0, np_margin: null, latest_margin: null, actual_dd: 0, estimated_dd: sku.dd_value || 0, dd_achievement: 0 });
       continue;
     }
 
@@ -269,7 +269,8 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
         launch_date: sku.fba_first_arrival,
         has_sales: false,
         max_monthly_sales: 0,
-        max_monthly_margin: null,
+        np_margin: null,
+        latest_margin: null,
         actual_dd: 0,
         estimated_dd: sku.dd_value || 0,
         dd_achievement: 0
@@ -283,7 +284,7 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
       results.push({
         sku: sku.sku, product_name: sku.product_name, fram_model: sku.fram_model,
         batch: sku.batch, launch_date: sku.fba_first_arrival,
-        has_sales: false, max_monthly_sales: 0, max_monthly_margin: null,
+        has_sales: false, max_monthly_sales: 0, np_margin: null, latest_margin: null,
         actual_dd: 0, estimated_dd: sku.dd_value || 0, dd_achievement: 0
       });
       continue;
@@ -292,15 +293,20 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
     const maxSales = monthsWithSales.reduce((max, m) =>
       (m.sales_volume || 0) > (max.sales_volume || 0) ? m : max, monthsWithSales[0]);
 
-    // Find max margin month (取新品期内毛利率最高的月份)
-    const maxMargin = monthsWithSales.reduce((max, m) =>
-      (m.gross_margin ?? -999) > (max.gross_margin ?? -999) ? m : max, monthsWithSales[0]);
-
     const actualDD = (maxSales.sales_volume || 0) / 30;
     const estimatedDD = sku.dd_value || 0;
 
     totalActualDD += actualDD;
     totalEstimatedDD += estimatedDD;
+
+    // 新品期毛利率 = 新品期内累计毛利额 / 累计销售额
+    const npTotalProfit = allMonthly.reduce((s, m) => s + (m.gross_profit || 0), 0);
+    const npTotalRevenue = allMonthly.reduce((s, m) => s + (m.sales_revenue || 0), 0);
+    const npMargin = npTotalRevenue > 0 ? npTotalProfit / npTotalRevenue : null;
+
+    // 最新月份毛利率
+    const latestPL = db.prepare(`SELECT gross_margin FROM profit_loss WHERE sku=? AND sales_volume>0 ORDER BY month DESC LIMIT 1`).get(sku.sku);
+    const latestMargin = latestPL ? latestPL.gross_margin : null;
 
     results.push({
       sku: sku.sku,
@@ -312,10 +318,10 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
       has_sales: true,
       max_monthly_sales: Math.round(maxSales.sales_volume || 0),
       max_month: maxSales.month,
-      max_monthly_margin: maxMargin.gross_margin || 0,
-      max_margin_month: maxMargin.month,
-      max_monthly_revenue: maxMargin.sales_revenue || 0,
-      max_monthly_profit: maxMargin.gross_profit || 0,
+      np_margin: npMargin,
+      np_total_profit: Math.round(npTotalProfit * 100) / 100,
+      np_total_revenue: Math.round(npTotalRevenue * 100) / 100,
+      latest_margin: latestMargin,
       actual_dd: Math.round(actualDD * 100) / 100,
       estimated_dd: Math.round(estimatedDD * 100) / 100,
       dd_achievement: estimatedDD > 0 ? Math.round((actualDD / estimatedDD) * 10000) / 100 : 0,
@@ -328,9 +334,9 @@ app.get('/api/dashboard/kpi', requireAuth, (req, res) => {
   const salesActivationRate = launchedCount > 0 ? Math.round((activeCount / launchedCount) * 10000) / 100 : 0;
   const ddAchievementRate = totalEstimatedDD > 0 ? Math.round((totalActualDD / totalEstimatedDD) * 10000) / 100 : 0;
 
-  // Gross margin (using each SKU's max margin month)
-  const totalProfit = results.filter(r => r.has_sales).reduce((s, r) => s + (r.max_monthly_profit || 0), 0);
-  const totalRevenue = results.filter(r => r.has_sales).reduce((s, r) => s + (r.max_monthly_revenue || 0), 0);
+  // 毛利率 = 新品期内 ΣSKU累计毛利额 / ΣSKU累计销售额 × 100%
+  const totalProfit = results.filter(r => r.has_sales).reduce((s, r) => s + (r.np_total_profit || 0), 0);
+  const totalRevenue = results.filter(r => r.has_sales).reduce((s, r) => s + (r.np_total_revenue || 0), 0);
   const grossMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0;
 
   res.json({
@@ -485,7 +491,7 @@ app.get('/api/dashboard/price', requireAuth, (req, res) => {
   processPriceResults(models, db, res);
 });
 
-// SKU-level price data for chart
+// SKU-level price data for chart (top 30 by NP sales volume)
 app.get('/api/dashboard/price-sku', requireAuth, (req, res) => {
   const db = getDb();
   const category = getCategory(req);
@@ -514,17 +520,37 @@ app.get('/api/dashboard/price-sku', requireAuth, (req, res) => {
     const totalVol = monthly.reduce((s,m)=>s+(m.sales_volume||0),0);
     const totalRev = monthly.reduce((s,m)=>s+(m.sales_revenue||0),0);
     const avgPrice = totalVol>0 ? totalRev/totalVol : 0;
+    const avgPriceUSD = avgPrice / 6.7;
+
+    // Latest month price & status
+    const latestPL = db.prepare(`SELECT month, unit_price, sales_revenue, sales_volume FROM profit_loss WHERE sku=? AND sales_volume>0 ORDER BY month DESC LIMIT 1`).get(sku.sku);
+    const latestPrice = latestPL ? latestPL.unit_price / 6.7 : null;
+    let npStatus = 'normal', latestStatus = 'normal';
+    if (sku.redline_price && avgPriceUSD < sku.redline_price) npStatus = 'below_redline';
+    else if (sku.estimated_price && avgPriceUSD > sku.estimated_price) npStatus = 'above_estimated';
+    else npStatus = 'redline_to_estimated';
+    if (sku.redline_price && latestPrice && latestPrice < sku.redline_price) latestStatus = 'below_redline';
+    else if (sku.estimated_price && latestPrice && latestPrice > sku.estimated_price) latestStatus = 'above_estimated';
+    else latestStatus = latestPrice ? 'redline_to_estimated' : 'normal';
+
     results.push({
       sku: sku.sku,
       product_name: sku.product_name,
       fram_model: sku.fram_model,
       estimated_price: sku.estimated_price ? Math.round(sku.estimated_price*100)/100 : null,
       redline_price: sku.redline_price ? Math.round(sku.redline_price*100)/100 : null,
-      actual_price: Math.round(avgPrice/6.7*100)/100,
-      price_status: sku.redline_price && (avgPrice/6.7) < sku.redline_price ? 'below_redline' : 'normal'
+      actual_price: Math.round(avgPriceUSD*100)/100,
+      np_volume: Math.round(totalVol),
+      price_status: npStatus,
+      latest_price: latestPrice ? Math.round(latestPrice*100)/100 : null,
+      latest_month: latestPL ? latestPL.month : null,
+      latest_status: latestStatus
     });
   }
-  res.json({ details: results });
+  // Sort by NP sales volume desc, take top 30
+  results.sort((a, b) => (b.np_volume || 0) - (a.np_volume || 0));
+  const top30 = results.slice(0, 30);
+  res.json({ details: top30, all_count: results.length });
 });
 
 // SKU综合详情（费率+价格+退款+KPI）
@@ -545,7 +571,14 @@ app.get('/api/dashboard/sku-detail/:sku', requireAuth, (req, res) => {
     const monthly = db.prepare(`SELECT * FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0`).all(sku, ...npMonths.months);
     if (monthly.length > 0) {
       const maxS = monthly.reduce((max,m) => m.sales_volume>(max.sales_volume||0)?m:max, monthly[0]);
-      const maxM = monthly.reduce((max,m) => (m.gross_margin??-999)>(max.gross_margin??-999)?m:max, monthly[0]);
+      // 新品期累计毛利额/累计销售额
+      const npTotalProfit = monthly.reduce((s,m)=>s+(m.gross_profit||0),0);
+      const npTotalRevenue = monthly.reduce((s,m)=>s+(m.sales_revenue||0),0);
+      const npMargin = npTotalRevenue > 0 ? npTotalProfit / npTotalRevenue : null;
+      // 最新月份毛利率
+      const latestPL = db.prepare(`SELECT month, gross_margin FROM profit_loss WHERE sku=? AND sales_volume>0 ORDER BY month DESC LIMIT 1`).get(sku);
+      const latestMargin = latestPL ? latestPL.gross_margin : null;
+
       const actUSD = (maxS.unit_price||0)/6.7;
       const estP = pe.estimated_price || 1;
 
@@ -570,7 +603,7 @@ app.get('/api/dashboard/sku-detail/:sku', requireAuth, (req, res) => {
         est_dd: pe.dd_value, actual_dd: Math.round((maxS.sales_volume||0)/30*100)/100,
         dd_pct: pe.dd_value>0?Math.round((maxS.sales_volume/30/pe.dd_value)*10000)/100:0,
         max_sales: Math.round(maxS.sales_volume), max_sales_month: maxS.month,
-        max_margin: maxM.gross_margin, max_margin_month: maxM.month
+        np_margin: npMargin, latest_margin: latestMargin
       };
     }
   }
@@ -1130,18 +1163,21 @@ app.get('/api/report', requireAuth, async (req, res) => {
     const mths = db.prepare(`SELECT * FROM profit_loss WHERE sku=? AND month IN (${ph}) AND sales_volume>0`).all(s.sku, ...npM.months);
     if (mths.length===0) { skuData.push({sku:s.sku,name:s.product_name,model:s.fram_model,brand:s.brand,estDD:s.dd_value,estPrice:s.estimated_price,redline:s.redline_price,hasData:false,latest:null}); continue; }
     const maxS = mths.reduce((a,b)=>b.sales_volume>a.sales_volume?b:a,mths[0]);
-    const maxM = mths.reduce((a,b)=>(b.gross_margin??-99)>(a.gross_margin??-99)?b:a,mths[0]);
+    // 新品期累计毛利率
+    const npTotalProfit = mths.reduce((sum,m)=>sum+(m.gross_profit||0),0);
+    const npTotalRevenue = mths.reduce((sum,m)=>sum+(m.sales_revenue||0),0);
+    const npMargin = npTotalRevenue>0 ? npTotalProfit/npTotalRevenue : 0;
     const actPriceUSD = (maxS.sales_revenue/(maxS.sales_volume||1))/6.7;
     skuData.push({
       sku:s.sku, name:s.product_name, model:s.fram_model, brand:s.brand,
       estDD:s.dd_value||0, actDD:Math.round(maxS.sales_volume/30*100)/100,
       ddPct:s.dd_value>0?Math.round(maxS.sales_volume/30/s.dd_value*10000)/100:0,
       ddMonth:maxS.month, ddSales:Math.round(maxS.sales_volume),
-      margin:maxM.gross_margin, marginPct:Math.round((maxM.gross_margin||0)*10000)/100,
-      marginMonth:maxM.month, profit:Math.round(maxM.gross_profit*100)/100, revenue:maxM.sales_revenue,
+      margin:npMargin, marginPct:Math.round(npMargin*10000)/100,
+      profit:Math.round(npTotalProfit*100)/100, revenue:npTotalRevenue,
       actPrice:Math.round(actPriceUSD*100)/100, estPrice:s.estimated_price, redline:s.redline_price,
-      promoAct:maxM.promotion_ratio, refundAct:maxM.refund_rate,
-      flAct:maxM.first_leg_ratio, llAct:maxM.last_leg_ratio, whAct:maxM.warehouse_ratio,
+      promoAct:maxS.promotion_ratio, refundAct:maxS.refund_rate,
+      flAct:maxS.first_leg_ratio, llAct:maxS.last_leg_ratio, whAct:maxS.warehouse_ratio,
       flEst:s.first_leg_ratio, llEst:s.last_leg_ratio, whEst:s.warehouse_ratio,
       promoEst:s.est_promotion_rate, refundEst:s.est_refund_rate,
       hasData:true,
