@@ -238,8 +238,8 @@ async function loadPanel1() {
           backgroundColor: ['#ff4d4f', '#faad14', '#91caff', '#52c41a']
         }]
       },
-      options: { responsive: true, plugins: {
-        legend: { position: 'bottom' },
+      options: { responsive: true, maintainAspectRatio: true, plugins: {
+        legend: { display: false },
         tooltip: { callbacks: { label: ctx => {
           const pct = (ctx.raw / ddTotal * 100).toFixed(1);
           return ctx.label + ': ' + ctx.raw + '个SKU (' + pct + '%)';
@@ -276,8 +276,8 @@ async function loadPanel1() {
           backgroundColor: ['#ff4d4f', '#faad14', '#91caff', '#52c41a']
         }]
       },
-      options: { responsive: true, plugins: {
-        legend: { position: 'bottom' },
+      options: { responsive: true, maintainAspectRatio: true, plugins: {
+        legend: { display: false },
         tooltip: { callbacks: { label: ctx => {
           const pct = (ctx.raw / mTotal * 100).toFixed(1);
           return ctx.label + ': ' + ctx.raw + '个SKU (' + pct + '%)';
@@ -416,7 +416,7 @@ async function loadPanel3(searchQuery) {
     charts.priceStatusNP = new Chart(document.getElementById('chartPriceStatusNP').getContext('2d'), {
       type: 'pie',
       data: { labels: ['低于红线价','红线价-测算价','高于测算价'], datasets: [{ data: [npStatusCounts.below_redline, npStatusCounts.redline_to_estimated, npStatusCounts.above_estimated], backgroundColor: ['#ff4d4f','#faad14','#52c41a'] }] },
-      options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0)||1; return ctx.label + ': ' + ctx.raw + '个 (' + (ctx.raw/t*100).toFixed(1) + '%)'; } } } } }
+      options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0)||1; return ctx.label + ': ' + ctx.raw + '个 (' + (ctx.raw/t*100).toFixed(1) + '%)'; } } } } }
     });
 
     // 最新月价格状态分布饼图
@@ -425,7 +425,7 @@ async function loadPanel3(searchQuery) {
     charts.priceStatusLatest = new Chart(document.getElementById('chartPriceStatusLatest').getContext('2d'), {
       type: 'pie',
       data: { labels: ['低于红线价','红线价-测算价','高于测算价'], datasets: [{ data: [latestStatusCounts.below_redline, latestStatusCounts.redline_to_estimated, latestStatusCounts.above_estimated], backgroundColor: ['#ff4d4f','#faad14','#52c41a'] }] },
-      options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0)||1; return ctx.label + ': ' + ctx.raw + '个 (' + (ctx.raw/t*100).toFixed(1) + '%)'; } } } } }
+      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0)||1; return ctx.label + ': ' + ctx.raw + '个 (' + (ctx.raw/t*100).toFixed(1) + '%)'; } } } } }
     });
     // Populate data boxes
     const priceBuckets = [
