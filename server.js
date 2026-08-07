@@ -944,39 +944,27 @@ app.get('/api/dashboard/launch-status', requireAuth, (req, res) => {
     });
   }
 
-  // ===== 未下单分析 =====
-  // 未上架的SKU（没有fba_first_arrival）
-  const unlaunched = allPE.filter(s => !s.fba_first_arrival);
-  // 其中有取消下单原因的（明确未下单）
-  const cancelled = unlaunched.filter(s => s.cancel_reason && s.cancel_reason.trim());
-  // 没有取消原因但也没上架的（状态不明）
-  const noStatus = unlaunched.filter(s => !s.cancel_reason || !s.cancel_reason.trim());
+  // ===== 取消下单分析 =====
+  // 取消下单 = 所有没有 fba_first_arrival 的SKU（利润测算中有立项，但进销存中无上架记录）
+  const cancelled = allPE.filter(s => !s.fba_first_arrival);
 
   // 按立项时间(project_date)分批
   const batchMap = {};
   for (const s of allPE) {
     const batch = s.project_date || '未填写立项时间';
-    if (!batchMap[batch]) batchMap[batch] = { total: 0, cancelled: 0, unlaunched: 0, cancelledList: [], unlaunchedList: [] };
+    if (!batchMap[batch]) batchMap[batch] = { total: 0, cancelled: 0, cancelledList: [] };
     batchMap[batch].total++;
     if (!s.fba_first_arrival) {
-      batchMap[batch].unlaunched++;
-      if (s.cancel_reason && s.cancel_reason.trim()) {
-        batchMap[batch].cancelled++;
-        batchMap[batch].cancelledList.push({ sku: s.sku, product_name: s.product_name, fram_model: s.fram_model, cancel_reason: s.cancel_reason, project_date: s.project_date, est_arrival_cycle: s.est_arrival_cycle });
-      } else {
-        batchMap[batch].unlaunchedList.push({ sku: s.sku, product_name: s.product_name, fram_model: s.fram_model, cancel_reason: '', project_date: s.project_date, est_arrival_cycle: s.est_arrival_cycle });
-      }
+      batchMap[batch].cancelled++;
+      batchMap[batch].cancelledList.push({ sku: s.sku, product_name: s.product_name, fram_model: s.fram_model, cancel_reason: s.cancel_reason || '', project_date: s.project_date, est_arrival_cycle: s.est_arrival_cycle });
     }
   }
   const batches = Object.entries(batchMap).map(([name, data]) => ({
     batch_name: name,
     total: data.total,
     cancelled: data.cancelled,
-    unlaunched: data.unlaunched - data.cancelled,
     cancel_rate: data.total > 0 ? Math.round((data.cancelled / data.total) * 10000) / 100 : 0,
-    unlaunch_rate: data.total > 0 ? Math.round((data.unlaunched / data.total) * 10000) / 100 : 0,
-    cancelled_list: data.cancelledList,
-    unlaunched_list: data.unlaunchedList
+    cancelled_list: data.cancelledList
   })).sort((a, b) => a.batch_name.localeCompare(b.batch_name));
 
   // ===== 到货异常分析（仅已上架且有立项时间+预估到货周期的SKU）=====
@@ -1026,13 +1014,10 @@ app.get('/api/dashboard/launch-status', requireAuth, (req, res) => {
     summary: {
       total_pe: allPE.length,
       launched: launched.length,
-      unlaunched: unlaunched.length,
       cancelled: cancelled.length,
-      no_status: noStatus.length,
       launch_rate: allPE.length > 0 ? Math.round((launched.length / allPE.length) * 10000) / 100 : 0
     },
     cancelled_list: cancelled,
-    no_status_list: noStatus,
     batches,
     delay_batches: delayBatches
   });
@@ -1559,20 +1544,50 @@ app.post('/api/admin/upload-path', requireAdmin, (req, res) => {
 });
 
 // Reusable Excel import function (supports all 3 types including template format)
+// Build column index map from header row (by header name → column index)
+function buildColMap(headers) {
+  const map = {};
+  for (let i = 0; i < headers.length; i++) {
+    const h = String(headers[i] || '').trim();
+    if (h) map[h] = i;
+  }
+  return map;
+}
+
+// Helper: safely get a column value by header name (falls back to hardcoded index for legacy files)
+function colVal(row, colMap, headerName, fallbackIdx) {
+  const idx = colMap[headerName];
+  if (idx !== undefined && idx < row.length) return row[idx];
+  // Fallback to hardcoded index for legacy non-template files
+  return fallbackIdx !== undefined && fallbackIdx < row.length ? row[fallbackIdx] : '';
+}
+
 function importExcelData(db, data, file_type, category) {
   let count = 0;
+
+  // Excel serial number → YYYY-MM-DD
+  const excelDate = (v) => {
+    if (!v || v === '' || isNaN(v) || v <= 0) return String(v || '');
+    const d = new Date((new Date(1899, 11, 30)).getTime() + Math.round(v) * 86400000);
+    return d.toISOString().slice(0, 10);
+  };
+
   // Template format: check if first row is a header (contains known column names)
   // Legacy format: skip metadata rows
   const h0 = data.length > 0 && Array.isArray(data[0]) ? String(data[0][0] || '') : '';
   const isTemplate = h0.includes('商品编码') || h0.includes('业务分类') || h0.includes('序号');
   const startRow = isTemplate ? 1 : (file_type === 'profit_loss' ? 9 : file_type === 'inventory' ? 6 : 3);
 
+  // Build header-name → column-index map for template files
+  const colMap = isTemplate ? buildColMap(data[0]) : {};
+
   for (let i = startRow; i < data.length; i++) {
     const row = data[i];
     if (!row || !Array.isArray(row)) continue;
 
     if (file_type === 'profit_estimation') {
-      // 用户模版格式 (型号后新增4列: 取消下单原因/立项时间/交期/预估到货周期，后续列号+4):
+      // Use header-name-based column lookup for template files (robust against column order changes)
+      // Falls back to hardcoded indices for legacy non-template files:
       // col0=SKU, col1=商品名称, col2=型号
       // col3=取消下单原因, col4=立项时间, col5=交期, col6=预估到货周期
       // col7=DD值, col8=不含税采购价, col9=预估头程, col10=预估FBA尾程
@@ -1582,10 +1597,14 @@ function importExcelData(db, data, file_type, category) {
       // col34=FBA-推广占比, col35=FBA-退款占比, col39=FBA-仓储占比
       const sku = String(row[0] || '').trim().toUpperCase();
       if (!sku) continue;
-      const estPromo = parseFloat(row[34]); // 模版中的推广占比
-      const estRefund = parseFloat(row[35]); // 模版中的退款占比
+      const estPromo = parseFloat(colVal(row, colMap, 'FBA-推广占比', 34));
+      const estRefund = parseFloat(colVal(row, colMap, 'FBA-退款占比', 35));
+      const estPrice = parseFloat(colVal(row, colMap, 'FBA-测算价', 27)) || null;
+      const redlinePrice = parseFloat(colVal(row, colMap, 'FBA-红线价', 29)) || null;
+      const projDate = excelDate(colVal(row, colMap, '立项时间', 4));
+      const delivDate = excelDate(colVal(row, colMap, '交期', 5));
       db.prepare(`INSERT OR REPLACE INTO profit_estimation (category, product_code, sku, product_name, fram_model, batch, estimated_price, redline_price, dd_value, material_ratio, tax_ratio, first_leg_ratio, last_leg_ratio, warehouse_ratio, purchase_price, purchase_price_ex_tax, est_first_leg_fee, est_last_leg_fee, est_promotion_rate, est_refund_rate, cancel_reason, project_date, delivery_date, est_arrival_cycle, competitor_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(category, sku, sku, row[1]||'', row[2]||'', '', parseFloat(row[27])||null, parseFloat(row[29])||null, parseFloat(row[7])||0, parseFloat(row[30])||null, parseFloat(row[31])||null, parseFloat(row[32])||null, parseFloat(row[33])||null, parseFloat(row[39])||null, null, parseFloat(row[8])||null, parseFloat(row[9])||null, parseFloat(row[10])||null, isNaN(estPromo)?0:estPromo, isNaN(estRefund)?0.0336:estRefund, String(row[3]||'')||'', String(row[4]||'')||'', String(row[5]||'')||'', String(row[6]||'')||'', String(row[22]||'').replace(/\n/g,' | '));
+        .run(category, sku, sku, String(colVal(row, colMap, '商品名称', 1)||''), String(colVal(row, colMap, '型号', 2)||''), '', estPrice, redlinePrice, parseFloat(colVal(row, colMap, 'dd值', 7))||0, parseFloat(colVal(row, colMap, 'FBA-材料占比', 30))||null, parseFloat(colVal(row, colMap, 'FBA-税费占比', 31))||null, parseFloat(colVal(row, colMap, 'FBA-头程占比', 32))||null, parseFloat(colVal(row, colMap, 'FBA-尾程占比', 33))||null, parseFloat(colVal(row, colMap, 'FBA-仓储占比', 39))||null, null, parseFloat(colVal(row, colMap, '不含税采购价RMB', 8))||null, parseFloat(colVal(row, colMap, '预估头程费用RMB', 9))||null, parseFloat(colVal(row, colMap, '预估FBA尾程RMB', 10))||null, isNaN(estPromo)?0:estPromo, isNaN(estRefund)?0.0336:estRefund, String(colVal(row, colMap, '取消下单原因', 3)||'')||'', projDate, delivDate, String(colVal(row, colMap, '预估到货周期（天）', 6)||'')||'', String(colVal(row, colMap, 'AMZ竞对详情', 22)||'').replace(/\n/g,' | '));
       count++;
     } else if (file_type === 'profit_loss') {
       // 用户模版: col2=SKU, col5=月份, col6=销量, col7=销售额, col8=毛利润, col9=毛利率

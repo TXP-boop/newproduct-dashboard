@@ -665,22 +665,20 @@ async function loadPanel5() {
     let cancelHtml = '';
     data.batches.forEach(b => {
       const cancelledSkus = b.cancelled_list || [];
-      const unlaunchedSkus = b.unlaunched_list || [];
-      const maxRows = Math.max(cancelledSkus.length, unlaunchedSkus.length, 1);
+      const maxRows = Math.max(cancelledSkus.length, 1);
       for (let i = 0; i < maxRows; i++) {
         cancelHtml += '<tr>';
-        if (i === 0) cancelHtml += `<td rowspan="${maxRows}"><b>${b.batch_name}</b></td><td rowspan="${maxRows}">${b.total}</td><td rowspan="${maxRows}">${b.cancelled}</td><td rowspan="${maxRows}">${b.unlaunched}</td><td rowspan="${maxRows}" class="${b.cancel_rate > 30 ? 'bad' : b.cancel_rate > 10 ? 'warn' : 'good'}">${b.cancel_rate}%</td>`;
+        if (i === 0) cancelHtml += `<td rowspan="${maxRows}"><b>${b.batch_name}</b></td><td rowspan="${maxRows}">${b.total}</td><td rowspan="${maxRows}">${b.cancelled}</td><td rowspan="${maxRows}" class="${b.cancel_rate > 30 ? 'bad' : b.cancel_rate > 10 ? 'warn' : 'good'}">${b.cancel_rate}%</td>`;
         if (cancelledSkus[i]) {
-          cancelHtml += `<td>${cancelledSkus[i].sku} ${cancelledSkus[i].fram_model ? '('+cancelledSkus[i].fram_model+')' : ''}<br><span style="font-size:11px;color:#ff4d4f">${cancelledSkus[i].cancel_reason}</span></td>`;
-        } else if (unlaunchedSkus[i]) {
-          cancelHtml += `<td style="color:#999">${unlaunchedSkus[i].sku} (无原因)</td>`;
+          const reason = cancelledSkus[i].cancel_reason ? `<br><span style="font-size:11px;color:#ff4d4f">${cancelledSkus[i].cancel_reason}</span>` : '';
+          cancelHtml += `<td>${cancelledSkus[i].sku} ${cancelledSkus[i].fram_model ? '('+cancelledSkus[i].fram_model+')' : ''}${reason}</td>`;
         } else {
           cancelHtml += '<td></td>';
         }
         cancelHtml += '</tr>';
       }
     });
-    if (!data.batches.length) cancelHtml = '<tr><td colspan="6" style="text-align:center;color:#999">所有立项SKU均已上架 ✓</td></tr>';
+    if (!data.batches.length) cancelHtml = '<tr><td colspan="5" style="text-align:center;color:#999">所有立项SKU均已上架 ✓</td></tr>';
     document.querySelector('#cancelTable tbody').innerHTML = cancelHtml;
 
     // 到货异常饼图（总体）

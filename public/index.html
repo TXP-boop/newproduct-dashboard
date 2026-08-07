@@ -75,10 +75,10 @@
 
   <nav class="tabs">
     <button class="tab active" data-tab="panel1">📈 新品指标达成</button>
+    <button class="tab" data-tab="panel5">🚀 新品上架情况</button>
     <button class="tab" data-tab="panel2">💰 费率比对</button>
     <button class="tab" data-tab="panel3">🏷 价格监测</button>
     <button class="tab" data-tab="panel4">⚠ 高退款型号清单</button>
-    <button class="tab" data-tab="panel5">🚀 新品上架情况</button>
     <button class="tab" data-tab="datamgmt">📁 数据管理</button>
   </nav>
 
@@ -121,6 +121,41 @@
       <h4>📐 计算规则说明</h4>
       <p><b>DD达成率</b>：每个SKU取新品期（上架次月/次次月/次次次月）最高月销量 ÷ 30 = 实际DD，实际DD ÷ 预测DD × 100% = 逐SKU达成率；汇总时 Σ实际DD ÷ Σ预测DD × 100% = 整体DD达成率</p>
       <p><b>毛利率</b>：各SKU的毛利率 = 新品期内累计毛利额 ÷ 累计销售额；整体毛利率 = Σ各SKU新品期累计毛利额 ÷ Σ各SKU新品期累计销售额 × 100%</p>
+    </div>
+  </section>
+
+  <!-- Panel 5: 新品上架情况 -->
+  <section id="panel5" class="panel">
+    <h2>🚀 新品上架情况分析</h2>
+    <div class="kpi-cards" style="margin-bottom:24px">
+      <div class="kpi-card"><div class="kpi-value" id="launch-total">--</div><div class="kpi-label">立项SKU总数</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="launch-launched">--</div><div class="kpi-label">已上架</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="launch-cancelled">--</div><div class="kpi-label">取消下单</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="launch-rate">--</div><div class="kpi-label">上架率</div></div>
+    </div>
+
+    <h3 style="margin:20px 0 12px;font-size:16px">📋 取消下单明细（按批次）</h3>
+    <div class="table-container">
+      <div class="table-wrap"><table id="cancelTable" class="data-table">
+        <thead><tr><th>批次(立项时间)</th><th>批次SKU总数</th><th>取消下单</th><th>取消占比</th><th>取消SKU明细（原因）</th></tr></thead>
+        <tbody></tbody></table>
+      </div>
+    </div>
+
+    <h3 style="margin:24px 0 12px;font-size:16px">📦 到货异常分析（按批次）</h3>
+    <div class="chart-row">
+      <div class="chart-box chart-with-data"><h3>到货状态分布（按批次）</h3><div class="chart-data-layout"><div class="chart-canvas-wrap"><canvas id="chartArrivalDelay"></canvas></div><div class="chart-data-list" id="arrivalDelayDataList"></div></div></div>
+    </div>
+    <div class="table-container" style="margin-top:16px">
+      <div class="table-wrap"><table id="arrivalDelayTable" class="data-table">
+        <thead><tr><th>批次(立项时间)</th><th>可分析SKU数</th><th>正常到货</th><th>延迟到货</th><th>延迟占比</th><th>最长延迟(天)</th><th>延迟TOP5 SKU</th></tr></thead>
+        <tbody></tbody></table>
+      </div>
+    </div>
+    <div class="calc-notes">
+      <h4>📐 计算规则</h4>
+      <p><b>预估到货时间</b> = 立项时间 + 预估到货周期（天）。实际到货时间（FBA首次到货）晚于预估到货时间即为<b>延迟到货</b>。</p>
+      <p><b>取消下单</b> = 在利润测算中有立项记录，但进销存报表中无FBA首次到货记录的SKU。</p>
     </div>
   </section>
 
@@ -185,41 +220,6 @@
     <div id="aiPanel4" class="ai-suggestions"></div>
   </section>
 
-  <!-- Panel 5: 新品上架情况 -->
-  <section id="panel5" class="panel">
-    <h2>🚀 新品上架情况分析</h2>
-    <div class="kpi-cards" style="margin-bottom:24px">
-      <div class="kpi-card"><div class="kpi-value" id="launch-total">--</div><div class="kpi-label">立项SKU总数</div></div>
-      <div class="kpi-card"><div class="kpi-value" id="launch-launched">--</div><div class="kpi-label">已上架</div></div>
-      <div class="kpi-card"><div class="kpi-value" id="launch-cancelled">--</div><div class="kpi-label">取消下单</div></div>
-      <div class="kpi-card"><div class="kpi-value" id="launch-rate">--</div><div class="kpi-label">上架率</div></div>
-    </div>
-
-    <h3 style="margin:20px 0 12px;font-size:16px">📋 取消下单明细（按批次）</h3>
-    <div class="table-container">
-      <div class="table-wrap"><table id="cancelTable" class="data-table">
-        <thead><tr><th>批次(立项时间)</th><th>批次SKU总数</th><th>已取消</th><th>未上架(无状态)</th><th>取消占比</th><th>取消SKU明细</th></tr></thead>
-        <tbody></tbody></table>
-      </div>
-    </div>
-
-    <h3 style="margin:24px 0 12px;font-size:16px">📦 到货异常分析（按批次）</h3>
-    <div class="chart-row">
-      <div class="chart-box chart-with-data"><h3>到货状态分布（按批次）</h3><div class="chart-data-layout"><div class="chart-canvas-wrap"><canvas id="chartArrivalDelay"></canvas></div><div class="chart-data-list" id="arrivalDelayDataList"></div></div></div>
-    </div>
-    <div class="table-container" style="margin-top:16px">
-      <div class="table-wrap"><table id="arrivalDelayTable" class="data-table">
-        <thead><tr><th>批次(立项时间)</th><th>可分析SKU数</th><th>正常到货</th><th>延迟到货</th><th>延迟占比</th><th>最长延迟(天)</th><th>延迟TOP5 SKU</th></tr></thead>
-        <tbody></tbody></table>
-      </div>
-    </div>
-    <div class="calc-notes">
-      <h4>📐 计算规则</h4>
-      <p><b>预估到货时间</b> = 立项时间 + 预估到货周期（天）。实际到货时间（FBA首次到货）晚于预估到货时间即为<b>延迟到货</b>。</p>
-      <p><b>取消下单</b> = 利润测算中有填写"取消下单原因"且无FBA到货记录的SKU。</p>
-    </div>
-  </section>
-
   <!-- Data Management Tab -->
   <section id="datamgmt" class="panel">
     <h2>📁 数据管理</h2>
@@ -277,6 +277,6 @@
   </section>
 </div>
 
-<script src="/js/app.js?v=24"></script>
+<script src="/js/app.js?v=25"></script>
 </body>
 </html>
